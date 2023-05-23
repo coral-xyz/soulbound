@@ -6,7 +6,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 // Soul bound authority account namespace.
 pub const NS_SBA: &[u8] = b"sba";
 
-// Soul boudn authority scoped to a specific program namespace. These
+// Soul bound authority scoped to a specific program namespace. These
 // authorities should always be the authorities controlling any assets
 // displayed by a given xNFT.
 pub const NS_SBA_SCOPED: &[u8] = b"sba-scoped";
