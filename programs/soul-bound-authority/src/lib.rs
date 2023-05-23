@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program;
+use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_spl::token::{self, FreezeAccount, Mint, MintTo, Token, TokenAccount};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -19,7 +21,8 @@ pub mod soul_bound_authority {
     // Stake program.
     ////////////////////////////////////////////////////////////////////////////
 
-    // TODO: might not even need to create account data.
+    // TODO: might not even need to create account data since the seeds are
+    //       sufficient.
     pub fn create_sba(ctx: Context<CreateSba>) -> Result<()> {
         let mut sba = &mut ctx.accounts.sba;
         sba.nft_mint = ctx.accounts.nft_mint.key();
@@ -56,6 +59,34 @@ pub mod soul_bound_authority {
     ////////////////////////////////////////////////////////////////////////////
     // Opque programs.
     ////////////////////////////////////////////////////////////////////////////
+
+    //
+    // CPIs to an opaque, unknown program with a scoped signer--as long as that
+    // opaque program is not self-referential.
+    //
+    pub fn execute_transaction(ctx: Context<ExecuteTransaction>, data: Vec<u8>) -> Result<()> {
+        let ix = Instruction {
+            program_id: ctx.accounts.program.key(),
+            data,
+            accounts: ctx
+                .remaining_accounts
+                .into_iter()
+                .map(|a| AccountMeta {
+                    pubkey: a.key(),
+                    is_signer: a.is_signer,
+                    is_writable: a.is_writable,
+                })
+                .collect(),
+        };
+        let bump = *ctx.bumps.get("sba").unwrap();
+        let sba = ctx.accounts.sba.key();
+        let program = ctx.accounts.program.key();
+        let seeds = &[NS_SBA_SCOPED, sba.as_ref(), program.as_ref(), &[bump]];
+        let signer = &[&seeds[..]];
+        let accounts = ctx.remaining_accounts;
+        solana_program::program::invoke_signed(&ix, accounts, signer)?;
+        Ok(())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +128,10 @@ pub struct StakeUnstake {
 #[derive(Accounts)]
 pub struct StakeClaim<'info> {
     pub nft_mint: Account<'info, Mint>,
-    #[account(constraint = nft_token.owner == authority.key())]
+    #[account(
+        constraint = nft_token.owner == authority.key(),
+        constraint = nft_token.mint == nft_mint.key(),
+    )]
     pub nft_token: Account<'info, TokenAccount>,
 
     ////////////////////////////////////////////////////////////////////////////
@@ -105,7 +139,7 @@ pub struct StakeClaim<'info> {
     ////////////////////////////////////////////////////////////////////////////
     #[account(
         seeds = [NS_SBA, nft_mint.key().as_ref()],
-        bump,
+        bump = sba.bump,
     )]
     pub sba: Account<'info, SoulBoundAuthority>,
     /// CHECK: seeds check asserts this is always the correct key.
@@ -125,6 +159,34 @@ pub struct StakeClaim<'info> {
 #[derive(Accounts)]
 pub struct StakeTransfer {
     // todo
+}
+
+//
+// Only the owner of the mad lad can invoke this.
+//
+#[derive(Accounts)]
+pub struct ExecuteTransaction<'info> {
+    pub nft_mint: Account<'info, Mint>,
+    #[account(
+        constraint = nft_token.owner == authority.key(),
+        constraint = nft_token.mint == nft_mint.key(),
+    )]
+    pub nft_token: Account<'info, TokenAccount>,
+    pub authority: Signer<'info>,
+    #[account(
+        seeds = [NS_SBA, nft_mint.key().as_ref()],
+        bump = sba.bump,
+    )]
+    pub sba: Account<'info, SoulBoundAuthority>,
+    /// CHECK: seeds constraint.
+    #[account(
+        seeds = [NS_SBA_SCOPED, sba.key().as_ref(), program.key().as_ref()],
+        bump,
+    )]
+    pub scoped_scoped_authority: UncheckedAccount<'info>,
+    /// CHECK: free CPI; no state accessed as long as not re-entrant.
+    #[account(constraint = program.key() != ID)]
+    pub program: UncheckedAccount<'info>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
