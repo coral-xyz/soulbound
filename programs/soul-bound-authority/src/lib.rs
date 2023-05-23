@@ -15,11 +15,30 @@ pub const NS_SBA_SCOPED: &[u8] = b"sba-scoped";
 pub mod soul_bound_authority {
     use super::*;
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Stake program.
+    ////////////////////////////////////////////////////////////////////////////
+
     // TODO: might not even need to create account data.
     pub fn create_sba(ctx: Context<CreateSba>) -> Result<()> {
         let mut sba = &mut ctx.accounts.sba;
         sba.nft_mint = ctx.accounts.nft_mint.key();
         sba.bump = *ctx.bumps.get("sba").unwrap();
+        Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Stake program.
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Stake the nft.
+    pub fn stake_stake(ctx: Context<StakeStake>) -> Result<()> {
+        // todo
+        Ok(())
+    }
+
+    pub fn stake_unstake(ctx: Context<StakeUnstake>) -> Result<()> {
+        // todo
         Ok(())
     }
 
@@ -33,6 +52,10 @@ pub mod soul_bound_authority {
         // todo
         Ok(())
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Opque programs.
+    ////////////////////////////////////////////////////////////////////////////
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,12 +66,12 @@ pub mod soul_bound_authority {
 pub struct CreateSba<'info> {
     pub nft_mint: Account<'info, Mint>,
     #[account(
-				init,
-				payer = payer,
-				space = 8+ SoulBoundAuthority::LEN,
-				seeds = [NS_SBA, nft_mint.key().as_ref()],
-				bump,
-		)]
+        init,
+        payer = payer,
+        space = 8+ SoulBoundAuthority::LEN,
+        seeds = [NS_SBA, nft_mint.key().as_ref()],
+        bump,
+    )]
     pub sba: Account<'info, SoulBoundAuthority>,
 
     ////////////////////////////////////////////////////////////////////////////
@@ -62,6 +85,16 @@ pub struct CreateSba<'info> {
 }
 
 #[derive(Accounts)]
+pub struct StakeStake {
+    // todo
+}
+
+#[derive(Accounts)]
+pub struct StakeUnstake {
+    // todo
+}
+
+#[derive(Accounts)]
 pub struct StakeClaim<'info> {
     pub nft_mint: Account<'info, Mint>,
     #[account(constraint = nft_token.owner == authority.key())]
@@ -71,15 +104,15 @@ pub struct StakeClaim<'info> {
     // Inferred.
     ////////////////////////////////////////////////////////////////////////////
     #[account(
-				seeds = [NS_SBA, nft_mint.key().as_ref()],
-				bump,
-		)]
+        seeds = [NS_SBA, nft_mint.key().as_ref()],
+        bump,
+    )]
     pub sba: Account<'info, SoulBoundAuthority>,
     /// CHECK: seeds check asserts this is always the correct key.
     #[account(
-				seeds = [NS_SBA_SCOPED, sba.key().as_ref(), stake_program.key().as_ref()],
-				bump,
-		)]
+        seeds = [NS_SBA_SCOPED, sba.key().as_ref(), stake_program.key().as_ref()],
+        bump,
+    )]
     pub sba_scoped_authority: UncheckedAccount<'info>,
     pub authority: Signer<'info>,
     // TODO:
