@@ -5,12 +5,9 @@ skip-lint = false
 [programs.localnet]
 soul_bound_authority = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
-[registry]
-url = "https://api.apr.dev"
-
 [provider]
 cluster = "localnet"
-wallet = "/Users/armaniferrante/.config/solana/id.json"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
@@ -18,3 +15,11 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 [[test.genesis]]
 address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 program = "./deps/metaplex-program-library/token-metadata/target/deploy/mpl_token_metadata.so"
+
+[[test.genesis]]
+address = "5drfC9jSUGEijRVuzQ4h6Uhk6J97kWpjMvaosVzApGEG"
+program = "./deps/cardinal-staking/target/deploy/cardinal_reward_distributor.so"
+
+[[test.genesis]]
+address = "6zzCmDAzy4F9epMLS7vWbGv67fm8hBqGLZQwEZUYAd4J"
+program = "./deps/cardinal-staking/target/deploy/cardinal_stake_pool.so"
