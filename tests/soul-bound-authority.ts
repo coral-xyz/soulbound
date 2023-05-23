@@ -16,47 +16,107 @@ describe("soul-bound-authority", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
+  //
+  // Program APIs.
+  //
   const program = anchor.workspace
     .SoulBoundAuthority as Program<SoulBoundAuthority>;
   const metaplex = new Metaplex(program.provider.connection).use(
     keypairIdentity(program.provider.wallet.payer)
   );
-  const token = Spl.token();
-  let nftMint: PublicKey;
+
+  //
+  // NFTs. These are the two mad lads for the tests.
+  //
+  let nftMintA: PublicKey;
+  let nftMintB: PublicKey;
 
   it("Setup: creates an nft", async () => {
-    const nft = await metaplex.nfts().create({
+    const nftA = await metaplex.nfts().create({
       name: "My Digital Collectible",
       sellerFeeBasisPoints: 0,
       uri: "https://arweave.net/my-content-hash",
       isMutable: true,
     });
-    nftMint = nft.mintAddress;
+    const nftB = await metaplex.nfts().create({
+      name: "My Digital Collectible 2",
+      sellerFeeBasisPoints: 0,
+      uri: "https://arweave.net/my-content-hash2",
+      isMutable: true,
+    });
+    nftMintA = nftA.mintAddress;
+    nftMintB = nftB.mintAddress;
   });
 
-  it("Creates a soul bound authority", async () => {
+  it("Creates a soul bound authority A", async () => {
     const [sba, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("sba"), nftMint.toBuffer()],
+      [Buffer.from("sba"), nftMintA.toBuffer()],
       program.programId
     );
     await program.methods
       .createSba()
       .accounts({
-        nftMint,
+        nftMint: nftMintA,
         sba,
       })
       .rpc();
 
     const sbaAccount = await program.account.soulBoundAuthority.fetch(sba);
     assert.equal(sbaAccount.bump, bump);
-    assert.equal(sbaAccount.nftMint.toString(), nftMint.toString());
+    assert.equal(sbaAccount.nftMint.toString(), nftMintA.toString());
   });
 
-  it("Stakes an nft", async () => {
+  it("Creates a soul bound authority B", async () => {
+    const [sba, bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("sba"), nftMintB.toBuffer()],
+      program.programId
+    );
+    await program.methods
+      .createSba()
+      .accounts({
+        nftMint: nftMintB,
+        sba,
+      })
+      .rpc();
+
+    const sbaAccount = await program.account.soulBoundAuthority.fetch(sba);
+    assert.equal(sbaAccount.bump, bump);
+    assert.equal(sbaAccount.nftMint.toString(), nftMintB.toString());
+  });
+
+  it("Stakes an nft A", async () => {
+    // todo
+  });
+
+  it("Stakes an nft B", async () => {
+    // todo
+  });
+
+  it("Waits for time to pass to accrue reward", async () => {
     // todo
   });
 
   it("Claims a reward", async () => {
+    // todo
+  });
+
+  it("Waits for time to pass to accrue rewards again", async () => {
+    // todo
+  });
+
+  it("Transfers a reward from nft A to nft B", async () => {
+    // todo
+  });
+
+  it("Claims a reward from nft B", async () => {
+    // todo
+  });
+
+  it("Unstakes nft A", async () => {
+    // todo
+  });
+
+  it("Unstakes nft B", async () => {
     // todo
   });
 });
