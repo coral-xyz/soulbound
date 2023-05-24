@@ -28,6 +28,10 @@ pub mod soul_bound_authority {
         Ok(())
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Delegation.
+    ////////////////////////////////////////////////////////////////////////////
+
     pub fn accept_delegate(ctx: Context<AcceptDelegate>) -> Result<()> {
         let mut sba = &mut ctx.accounts.sba;
         sba.delegate = Some(ctx.accounts.delegate.key());
@@ -41,37 +45,7 @@ pub mod soul_bound_authority {
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Stake program.
-    ////////////////////////////////////////////////////////////////////////////
-
-    // Stake the nft.
-    pub fn stake_stake(ctx: Context<StakeStake>) -> Result<()> {
-        lazily_wipe_delegate(&mut ctx.accounts.sba, &ctx.accounts.authority)?;
-        // todo
-        Ok(())
-    }
-
-    pub fn stake_unstake(ctx: Context<StakeUnstake>) -> Result<()> {
-        lazily_wipe_delegate(&mut ctx.accounts.sba, &ctx.accounts.authority)?;
-        // todo
-        Ok(())
-    }
-
-    // Claims tokens from the staking program.
-    pub fn stake_claim(ctx: Context<StakeClaim>) -> Result<()> {
-        lazily_wipe_delegate(&mut ctx.accounts.sba, &ctx.accounts.authority)?;
-        // todo
-        Ok(())
-    }
-
-    pub fn stake_transfer(ctx: Context<StakeTransfer>) -> Result<()> {
-        lazily_wipe_delegate(&mut ctx.accounts.sba, &ctx.accounts.authority)?;
-        // todo
-        Ok(())
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Opque programs.
+    // Opaque CPI Proxy.
     ////////////////////////////////////////////////////////////////////////////
 
     //
@@ -169,158 +143,31 @@ pub struct RevokeDelegate<'info> {
 // Note: either the delegate or the authority has to sign.
 //
 #[derive(Accounts)]
-pub struct StakeStake<'info> {
-    #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
-        bump = sba.bump,
-    )]
-    pub sba: Account<'info, SoulBoundAuthority>,
-    pub nft_mint: Account<'info, Mint>,
-    #[account(
-        constraint = nft_token.owner == authority.key(),
-        constraint = nft_token.mint == nft_mint.key(),
-    )]
-    pub nft_token: Account<'info, TokenAccount>,
-    /// CHECK: Checked via constraint on nft_token .
-    pub authority: UncheckedAccount<'info>,
-    /// CHECK: Checked via constraint on sba.delegate.
-    #[account(
-        constraint = Some(delegate.key()) == sba.delegate
-    )]
-    pub delegate: UncheckedAccount<'info>,
-    #[account(
-        constraint = authority.key() == authority_or_delegate.key()
-            || delegate.key() == authority_or_delegate.key()
-    )]
-    pub authority_or_delegate: Signer<'info>,
-    // todo
-}
-
-//
-// Note: either the delegate or the authority has to sign.
-//
-#[derive(Accounts)]
-pub struct StakeUnstake<'info> {
-    #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
-        bump = sba.bump,
-    )]
-    pub sba: Account<'info, SoulBoundAuthority>,
-    pub nft_mint: Account<'info, Mint>,
-    #[account(
-        constraint = nft_token.owner == authority.key(),
-        constraint = nft_token.mint == nft_mint.key(),
-    )]
-    pub nft_token: Account<'info, TokenAccount>,
-    /// CHECK: Checked via constraint on nft_token .
-    pub authority: UncheckedAccount<'info>,
-    /// CHECK: Checked via constraint on sba.delegate.
-    #[account(
-        constraint = Some(delegate.key()) == sba.delegate
-    )]
-    pub delegate: UncheckedAccount<'info>,
-    #[account(
-        constraint = authority.key() == authority_or_delegate.key()
-            || delegate.key() == authority_or_delegate.key()
-    )]
-    pub authority_or_delegate: Signer<'info>,
-    // todo
-}
-
-//
-// Note: either the delegate or the authority has to sign.
-//
-#[derive(Accounts)]
-pub struct StakeClaim<'info> {
-    pub nft_mint: Account<'info, Mint>,
-    #[account(
-        constraint = nft_token.owner == authority.key(),
-        constraint = nft_token.mint == nft_mint.key(),
-    )]
-    pub nft_token: Account<'info, TokenAccount>,
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Inferred.
-    ////////////////////////////////////////////////////////////////////////////
-    #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
-        bump = sba.bump,
-    )]
-    pub sba: Account<'info, SoulBoundAuthority>,
-    /// CHECK: seeds check asserts this is always the correct key.
-    #[account(
-        seeds = [NS_SBA_SCOPED, sba.key().as_ref(), stake_program.key().as_ref()],
-        bump,
-    )]
-    pub sba_scoped_authority: UncheckedAccount<'info>,
-    /// CHECK: Checked via constraint on nft_token .
-    pub authority: UncheckedAccount<'info>,
-    /// CHECK: Checked via constraint on sba.delegate.
-    #[account(
-        constraint = Some(delegate.key()) == sba.delegate
-    )]
-    pub delegate: UncheckedAccount<'info>,
-    //
-    #[account(
-        constraint = authority.key() == authority_or_delegate.key()
-            || delegate.key() == authority_or_delegate.key()
-    )]
-    pub authority_or_delegate: Signer<'info>,
-    // TODO:
-    /// CHECK: todo (use stake program type).
-    pub stake_program: UncheckedAccount<'info>,
-    // - stake program
-    // - stake accounts
-}
-
-//
-// Note: either the delegate or the authority has to sign.
-//
-#[derive(Accounts)]
-pub struct StakeTransfer<'info> {
-    #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
-        bump = sba.bump,
-    )]
-    pub sba: Account<'info, SoulBoundAuthority>,
-    pub nft_mint: Account<'info, Mint>,
-    #[account(
-        constraint = nft_token.owner == authority.key(),
-        constraint = nft_token.mint == nft_mint.key(),
-    )]
-    pub nft_token: Account<'info, TokenAccount>,
-    /// CHECK: Checked via constraint on nft_token .
-    pub authority: UncheckedAccount<'info>,
-    /// CHECK: Checked via constraint on sba.delegate.
-    #[account(
-        constraint = Some(delegate.key()) == sba.delegate
-    )]
-    pub delegate: UncheckedAccount<'info>,
-    #[account(
-        constraint = authority.key() == authority_or_delegate.key()
-            || delegate.key() == authority_or_delegate.key()
-    )]
-    pub authority_or_delegate: Signer<'info>,
-    // todo
-}
-
-//
-// Note: either the delegate or the authority has to sign.
-//
-#[derive(Accounts)]
 pub struct ExecuteTransaction<'info> {
+    #[account(
+        seeds = [NS_SBA, nft_mint.key().as_ref()],
+        bump = sba.bump,
+    )]
+    pub sba: Account<'info, SoulBoundAuthority>,
     pub nft_mint: Account<'info, Mint>,
     #[account(
         constraint = nft_token.owner == authority.key(),
         constraint = nft_token.mint == nft_mint.key(),
     )]
     pub nft_token: Account<'info, TokenAccount>,
-    pub authority: Signer<'info>,
+    /// CHECK: Checked via constraint on nft_token .
+    pub authority: UncheckedAccount<'info>,
+    /// CHECK: Checked via constraint on sba.delegate.
     #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
-        bump = sba.bump,
+        constraint = Some(delegate.key()) == sba.delegate
     )]
-    pub sba: Account<'info, SoulBoundAuthority>,
+    pub delegate: UncheckedAccount<'info>,
+    #[account(
+        constraint = authority.key() == authority_or_delegate.key()
+            || delegate.key() == authority_or_delegate.key()
+    )]
+    pub authority_or_delegate: Signer<'info>,
+
     /// CHECK: seeds constraint.
     #[account(
         seeds = [NS_SBA_SCOPED, sba.key().as_ref(), program.key().as_ref()],

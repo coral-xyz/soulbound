@@ -16,10 +16,16 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 program = "./deps/metaplex-program-library/token-metadata/target/deploy/mpl_token_metadata.so"
 
+#
+# If this ever changes, make sure to change the tests.
+#
 [[test.genesis]]
 address = "5drfC9jSUGEijRVuzQ4h6Uhk6J97kWpjMvaosVzApGEG"
 program = "./deps/cardinal-staking/target/deploy/cardinal_reward_distributor.so"
 
+#
+# If this ever changes, make sure to change the tests.
+#
 [[test.genesis]]
 address = "6zzCmDAzy4F9epMLS7vWbGv67fm8hBqGLZQwEZUYAd4J"
 program = "./deps/cardinal-staking/target/deploy/cardinal_stake_pool.so"
