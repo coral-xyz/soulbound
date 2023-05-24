@@ -18,7 +18,7 @@ pub mod soul_bound_authority {
     use super::*;
 
     ////////////////////////////////////////////////////////////////////////////
-    // Stake program.
+    // Initialization.
     ////////////////////////////////////////////////////////////////////////////
 
     pub fn create_sba(ctx: Context<CreateSba>) -> Result<()> {
@@ -367,8 +367,14 @@ pub enum ErrorCode {
 // Access control.
 ////////////////////////////////////////////////////////////////////////////////
 
+//
+// If the owner of the mad lad has changed, then wipes the delegate and updates
+// the authority to the new owner. This needs to be called and checked
+// anytime an instruction uses any of the soul bound authority signers.
+//
 // Assumes the current_authority <> SBA nft relationship has been established by
 // constraints already.
+//
 pub fn lazily_wipe_delegate<'info>(
     sba: &mut Account<'info, SoulBoundAuthority>,
     current_authority: &AccountInfo<'info>,
