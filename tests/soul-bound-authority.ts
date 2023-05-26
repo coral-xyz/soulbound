@@ -1,6 +1,23 @@
 import * as anchor from "@project-serum/anchor";
 import { Program, Spl } from "@project-serum/anchor";
-import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
+import {
+	ASSOCIATED_TOKEN_PROGRAM_ID,
+	TOKEN_PROGRAM_ID,
+	mintTo,
+	getAssociatedTokenAddress,
+	createAssociatedTokenAccountInstruction,
+} from "@solana/spl-token";
+import {
+	sendAndConfirmTransaction,
+	Transaction,
+	Connection,
+	Signer,
+	ConfirmOptions,
+	PublicKey,
+	Keypair,
+	SystemProgram,
+	SYSVAR_INSTRUCTIONS_PUBKEY,
+} from "@solana/web3.js";
 import { keypairIdentity, Metaplex } from "@metaplex-foundation/js";
 import { SoulBoundAuthority } from "../target/types/soul_bound_authority";
 import {
@@ -31,6 +48,19 @@ const CARDINAL_REWARD_DISTRIBUTOR_PROGRAM_ID = new PublicKey(
 );
 const CARDINAL_STAKE_POOL_PROGRAM_ID = new PublicKey(
   "6zzCmDAzy4F9epMLS7vWbGv67fm8hBqGLZQwEZUYAd4J"
+);
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
+  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+);
+
+//
+// Misc programs.
+//
+const AUTHORIZATION_RULES_PROGRAM_ID = new PublicKey(
+	"CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR"
+);
+const AUTHORIZATION_RULES = new PublicKey(
+	"CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR"
 );
 
 describe("soul-bound-authority", () => {
@@ -63,21 +93,22 @@ describe("soul-bound-authority", () => {
   //
   // NFTs. These are the two mad lads for the tests.
   //
-  let nftMintA: PublicKey;
-  let nftMintB: PublicKey;
+  let nftA: { mintAddress: PublicKey, masterEditionAddress: PublicKey, metadataAddress: PublicKey };
+  let nftB: { mintAddress: PublicKey, masterEditionAddress: PublicKey, metadataAddress: PublicKey };
 
   //
   // Misc accounts used across tests.
   //
+	let sba: PublicKey; // Soulbound Authority.
   let identifier: PublicKey;
   let stakePool: PublicKey;
   let rewardDistributor: PublicKey;
 
-  it("Setup: creates the GOLD mint", async () => {
+  it("Setup: creates the gold mint", async () => {
     const goldMintKeypair = Keypair.generate();
     goldMint = goldMintKeypair.publicKey;
 
-    const goldMintAuthority = program.provider.publicKey;
+    const goldMintAuthority = ARMANI_AUTHORITY;
 
     await token.methods
       .initializeMint(1, goldMintAuthority, null)
@@ -100,57 +131,79 @@ describe("soul-bound-authority", () => {
       .rpc();
   });
 
+	it("Setup: mints the gold to a system-program owned treasury account", async () => {
+		await createAssociatedTokenAccount(
+			program.provider.connection, // conection
+			program.provider.wallet.payer, // payer
+			goldMint, // mint
+			ARMANI_AUTHORITY, // owner of ata
+		);
+
+		const goldAta = await anchor.utils.token.associatedAddress({
+			mint: goldMint,
+			owner: ARMANI_AUTHORITY,
+		});
+		await token
+			.methods
+			.mintTo(new BN(10000))
+			.accounts({
+				mint: goldMint,
+				to: goldAta,
+				authority: ARMANI_AUTHORITY,
+			})
+			.rpc();
+	});
+
   it("Setup: creates an nft", async () => {
-    const nftA = await metaplex.nfts().create({
+    nftA = await metaplex.nfts().create({
       name: "My Digital Collectible",
       sellerFeeBasisPoints: 0,
       uri: "https://arweave.net/my-content-hash",
       isMutable: true,
     });
-    const nftB = await metaplex.nfts().create({
+    nftB = await metaplex.nfts().create({
       name: "My Digital Collectible 2",
       sellerFeeBasisPoints: 0,
       uri: "https://arweave.net/my-content-hash2",
       isMutable: true,
     });
-    nftMintA = nftA.mintAddress;
-    nftMintB = nftB.mintAddress;
   });
 
   it("Creates a soul bound authority A", async () => {
-    const [sba, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("sba"), nftMintA.toBuffer()],
+    const [_sba, bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("sba"), nftA.mintAddress.toBuffer()],
       program.programId
     );
+		sba = _sba;
     await program.methods
       .createSba()
       .accounts({
-        nftMint: nftMintA,
+        nftMint: nftA.mintAddress,
         sba,
       })
       .rpc();
 
     const sbaAccount = await program.account.soulBoundAuthority.fetch(sba);
     assert.equal(sbaAccount.bump, bump);
-    assert.equal(sbaAccount.nftMint.toString(), nftMintA.toString());
+    assert.equal(sbaAccount.nftMint.toString(), nftA.mintAddress.toString());
   });
 
   it("Creates a soul bound authority B", async () => {
     const [sba, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("sba"), nftMintB.toBuffer()],
+      [Buffer.from("sba"), nftB.mintAddress.toBuffer()],
       program.programId
     );
     await program.methods
       .createSba()
       .accounts({
-        nftMint: nftMintB,
+        nftMint: nftB.mintAddress,
         sba,
       })
       .rpc();
 
     const sbaAccount = await program.account.soulBoundAuthority.fetch(sba);
     assert.equal(sbaAccount.bump, bump);
-    assert.equal(sbaAccount.nftMint.toString(), nftMintB.toString());
+    assert.equal(sbaAccount.nftMint.toString(), nftB.mintAddress.toString());
   });
 
   it("Initializes a stake identifier", async () => {
@@ -204,12 +257,23 @@ describe("soul-bound-authority", () => {
       [Buffer.from("reward-distributor"), stakePool.toBuffer()],
       rewardDistributorProgram.programId,
     )[0];
+		const goldAta = await anchor.utils.token.associatedAddress({
+			mint: goldMint,
+			owner: ARMANI_AUTHORITY,
+		});
+		const rewardDistributorAta = await createAssociatedTokenAccount(
+			program.provider.connection, // conection
+			program.provider.wallet.payer, // payer
+			goldMint, // mint
+			rewardDistributor, // owner of ata
+		);
+
     await rewardDistributorProgram.methods
       .initRewardDistributor({
-        rewardAmount: new BN(1),
-        rewardDurationSeconds: new BN(1),
+        rewardAmount: new BN(1), // TODO
+        rewardDurationSeconds: new BN(1), // TODO
         kind: 2, // Treasury (rather than Mint).
-        supply: null,
+        supply: new BN(1), // TODO
         maxSupply: null,
         defaultMultiplier: null,
         multiplierDecimals: null,
@@ -220,12 +284,78 @@ describe("soul-bound-authority", () => {
         stakePool,
         rewardMint: goldMint,
         authority: ARMANI_AUTHORITY,
+				payer: ARMANI_AUTHORITY,
+				tokenProgram: TOKEN_PROGRAM_ID,
+				systemProgram: SystemProgram.programId,
       })
+			.remainingAccounts([
+				{
+					isWritable: true,
+					isSigner: false,
+					pubkey: rewardDistributorAta, // reward distributor token account
+				},
+				{
+					isWritable: true,
+					isSigner: false,
+					pubkey: goldAta, // authority token account
+				}
+			])
       .rpc();
+
   });
 
   it("Stakes an nft A", async () => {
-    // todo
+		const user = program.provider.publicKey;
+		const stakeEntry = PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("stake-entry"),
+				stakePool.toBuffer(),
+				nftA.mintAddress.toBuffer(),
+				getStakeSeed(1, user).toBuffer(),
+			],
+			stakePoolProgram.programId,
+		)[0];
+		const rewardEntry = PublicKey.findProgramAddressSync(
+			[Buffer.from("reward-entry"), rewardDistributor.toBuffer(), stakeEntry.toBuffer()],
+			rewardDistributorProgram.programId,
+		)[0];
+		const ata = await anchor.utils.token.associatedAddress({
+			mint: nftA.mintAddress,
+			owner: program.provider.publicKey,
+		});
+		const tokenRecord = PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("metadata"),
+				TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+				nftA.mintAddress.toBuffer(),
+				Buffer.from("token-record"),
+				ata.toBuffer(),
+			],
+			TOKEN_METADATA_PROGRAM_ID,
+		)[0];
+		await stakePoolProgram
+			.methods
+			.stakeProgrammable(new BN(1))
+			.accounts({
+				stakeEntry,
+				rewardEntry,
+				rewardDistributor,
+				stakePool,
+				originalMint: nftA.mintAddress,
+				user,
+				userOriginalMintTokenAccount: ata,
+				userOriginalMintTokenRecord: tokenRecord,
+				mintMetadata: nftA.metadataAddress,
+				mintEdition: nftA.masterEditionAddress,
+				authorizationRules: AUTHORIZATION_RULES,
+				sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+				tokenProgram: TOKEN_PROGRAM_ID,
+				tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+				authorizationRulesProgram: AUTHORIZATION_RULES_PROGRAM_ID,
+				rewardDistributorProgram: rewardDistributorProgram.programId,
+				systemProgram: SystemProgram.programId,
+			})
+			.rpc();
   });
 
   it("Stakes an nft B", async () => {
@@ -260,3 +390,59 @@ describe("soul-bound-authority", () => {
     // todo
   });
 });
+
+//
+export async function createAssociatedTokenAccount(
+    connection: Connection,
+    payer: Signer,
+    mint: PublicKey,
+    owner: PublicKey,
+    confirmOptions?: ConfirmOptions,
+    programId = TOKEN_PROGRAM_ID,
+  associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+): Promise<PublicKey> {
+  const associatedToken = await getAssociatedTokenAddress(mint, owner, true, programId, associatedTokenProgramId);
+
+  const transaction = new Transaction().add(
+    createAssociatedTokenAccountInstruction(
+      payer.publicKey,
+      associatedToken,
+      owner,
+      mint,
+      programId,
+      associatedTokenProgramId
+    )
+  );
+
+  await sendAndConfirmTransaction(connection, transaction, [payer], confirmOptions);
+
+  return associatedToken;
+}
+
+//
+
+// Supply is the token supply of the nft mint.
+function getStakeSeed(supply: number, user: PublicKey): PublicKey {
+	if (supply > 1) {
+		return user;
+	} else {
+		return PublicKey.default;
+	}
+}
+/*
+			.remainingAccounts([
+				{
+					isSigner: false,
+					isWritable: false,
+					pubkey: stakeEntryAuthorizationRecord,
+				}
+			])}
+		const stakeEntryAuthorizationRecord = PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("stake-authorization"),
+				stakePool.toBuffer(),
+				nftA.mintAddress.toBuffer(),
+			],
+			stakePoolProgram.programId,
+		)[0];
+*/

@@ -11,7 +11,7 @@ pub const NS_SBA: &[u8] = b"sba";
 // Soul bound authority scoped to a specific program namespace. These
 // authorities should always be the authorities controlling any assets
 // displayed by a given xNFT.
-pub const NS_SBA_SCOPED: &[u8] = b"sba-scoped";
+pub const NS_SBA_SCOPED_PROGRAM: &[u8] = b"sba-scoped-program";
 
 #[program]
 pub mod soul_bound_authority {
@@ -52,7 +52,10 @@ pub mod soul_bound_authority {
     // CPIs to an opaque, unknown program with a scoped signer--as long as that
     // opaque program is not self-referential.
     //
-    pub fn execute_transaction(ctx: Context<ExecuteTransaction>, data: Vec<u8>) -> Result<()> {
+    pub fn execute_tx_scoped_program(
+        ctx: Context<ExecuteTransaction>,
+        data: Vec<u8>,
+    ) -> Result<()> {
         lazily_wipe_delegate(&mut ctx.accounts.sba, &ctx.accounts.authority)?;
 
         let ix = Instruction {
@@ -71,7 +74,12 @@ pub mod soul_bound_authority {
         let bump = *ctx.bumps.get("sba").unwrap();
         let sba = ctx.accounts.sba.key();
         let program = ctx.accounts.program.key();
-        let seeds = &[NS_SBA_SCOPED, sba.as_ref(), program.as_ref(), &[bump]];
+        let seeds = &[
+            NS_SBA_SCOPED_PROGRAM,
+            sba.as_ref(),
+            program.as_ref(),
+            &[bump],
+        ];
         let signer = &[&seeds[..]];
         let accounts = ctx.remaining_accounts;
         solana_program::program::invoke_signed(&ix, accounts, signer)?;
@@ -170,7 +178,7 @@ pub struct ExecuteTransaction<'info> {
 
     /// CHECK: seeds constraint.
     #[account(
-        seeds = [NS_SBA_SCOPED, sba.key().as_ref(), program.key().as_ref()],
+        seeds = [NS_SBA_SCOPED_PROGRAM, sba.key().as_ref(), program.key().as_ref()],
         bump,
     )]
     pub scoped_scoped_authority: UncheckedAccount<'info>,
