@@ -103,6 +103,11 @@ describe("soul-bound-authority", () => {
     masterEditionAddress: PublicKey;
     metadataAddress: PublicKey;
   };
+  let collection: {
+    mintAddress: PublicKey;
+    masterEditionAddress: PublicKey;
+    metadataAddress: PublicKey;
+  };
 
   //
   // Misc accounts used across tests.
@@ -162,18 +167,40 @@ describe("soul-bound-authority", () => {
   });
 
   it("Setup: creates an nft", async () => {
+    collection = await metaplex.nfts().create({
+      name: "Mad Lads Collection Test",
+      sellerFeeBasisPoints: 0,
+      uri: "https://arweave.net/my-content-hash2",
+      isCollection: true,
+    });
     nftA = await metaplex.nfts().create({
       name: "My Digital Collectible",
       sellerFeeBasisPoints: 0,
       uri: "https://arweave.net/my-content-hash",
       isMutable: true,
+      collection: collection.mintAddress,
     });
     nftB = await metaplex.nfts().create({
       name: "My Digital Collectible 2",
       sellerFeeBasisPoints: 0,
       uri: "https://arweave.net/my-content-hash2",
       isMutable: true,
+      collection: collection.mintAddress,
     });
+
+    await metaplex.nfts().verifyCollection({
+      mintAddress: nftA.mintAddress,
+      collectionMintAddress: collection.mintAddress,
+    });
+    await metaplex.nfts().verifyCollection({
+      mintAddress: nftB.mintAddress,
+      collectionMintAddress: collection.mintAddress,
+    });
+
+    const n = await metaplex.nfts().findByMint({
+      mintAddress: nftA.mintAddress,
+    });
+    console.log("ARMANI NFT A", n);
   });
 
   it("Creates a soul bound authority A", async () => {
@@ -241,7 +268,8 @@ describe("soul-bound-authority", () => {
         overlayText: "Fock it.",
         imageUri: "https://www.madlads.com/mad_lads_logo.svg",
         requiresCollections: [
-          new PublicKey("J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w"),
+          //          new PublicKey("J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w"),
+          collection.mintAddress,
         ],
         requiresCreators: [], // TODO: Is this needed?
         requiresAuthorization: true,
@@ -257,6 +285,10 @@ describe("soul-bound-authority", () => {
         identifier,
       })
       .rpc();
+    const stakePoolA = await stakePoolProgram.account.stakePool.fetch(
+      stakePool
+    );
+    console.log("HERE", stakePoolA);
   });
 
   it("Initializes a reward distributor", async () => {
