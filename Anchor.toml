@@ -38,9 +38,15 @@ program = "./deps/cardinal-staking/target/deploy/cardinal_reward_distributor.so"
 address = "stkBL96RZkjY5ine4TvPihGqW8UHJfch2cokjAPzV8i"
 program = "./deps/cardinal-staking/target/deploy/cardinal_stake_pool.so"
 
+#
+# We clone the authorization rules program and the authorization rules account for
+# local testing.
+#
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
 
+#
+# Metaplex Authorization Rules program.
 #
 # If this ever changes, make sure to change the
 #
@@ -50,6 +56,8 @@ url = "https://api.mainnet-beta.solana.com"
 [[test.validator.clone]]
 address = "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg"
 
+#
+# Metaplex Authorization Rules account.
 #
 # If this ever changes, make sure to change the
 #
