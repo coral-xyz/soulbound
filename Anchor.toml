@@ -17,15 +17,44 @@ address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 program = "./deps/metaplex-program-library/token-metadata/target/deploy/mpl_token_metadata.so"
 
 #
-# If this ever changes, make sure to change the tests.
+# If this ever changes, make sure to change the
+#
+# - tests
+# - program binary (declare id)
+# - toml below
 #
 [[test.genesis]]
-address = "5drfC9jSUGEijRVuzQ4h6Uhk6J97kWpjMvaosVzApGEG"
+address = "rwdNPNPS6zNvtF6FMvaxPRjzu2eC51mXaDT9rmWsojp"
 program = "./deps/cardinal-staking/target/deploy/cardinal_reward_distributor.so"
 
 #
-# If this ever changes, make sure to change the tests.
+# If this ever changes, make sure to change the
+#
+# - tests
+# - program binary (declare id)
+# - toml below
 #
 [[test.genesis]]
-address = "6zzCmDAzy4F9epMLS7vWbGv67fm8hBqGLZQwEZUYAd4J"
+address = "stkBL96RZkjY5ine4TvPihGqW8UHJfch2cokjAPzV8i"
 program = "./deps/cardinal-staking/target/deploy/cardinal_stake_pool.so"
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+#
+# If this ever changes, make sure to change the
+#
+# - tests
+# - toml below
+#
+[[test.validator.clone]]
+address = "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg"
+
+#
+# If this ever changes, make sure to change the
+#
+# - tests
+# - toml below
+#
+[[test.validator.clone]]
+address = "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"

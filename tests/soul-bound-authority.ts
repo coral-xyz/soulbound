@@ -16,9 +16,11 @@ import {
   PublicKey,
   Keypair,
   SystemProgram,
+  ComputeBudgetProgram,
   SYSVAR_INSTRUCTIONS_PUBKEY,
 } from "@solana/web3.js";
 import { keypairIdentity, Metaplex } from "@metaplex-foundation/js";
+import { TokenStandard } from "@metaplex-foundation/mpl-token-metadata";
 import { SoulBoundAuthority } from "../target/types/soul_bound_authority";
 import {
   IDL as CardinalRewardDistributorIdl,
@@ -44,10 +46,10 @@ const ARMANI_AUTHORITY = new PublicKey(
 // If these program ids ever change, make sure to change the Anchor.toml.
 //
 const CARDINAL_REWARD_DISTRIBUTOR_PROGRAM_ID = new PublicKey(
-  "5drfC9jSUGEijRVuzQ4h6Uhk6J97kWpjMvaosVzApGEG"
+  "rwdNPNPS6zNvtF6FMvaxPRjzu2eC51mXaDT9rmWsojp"
 );
 const CARDINAL_STAKE_POOL_PROGRAM_ID = new PublicKey(
-  "6zzCmDAzy4F9epMLS7vWbGv67fm8hBqGLZQwEZUYAd4J"
+  "stkBL96RZkjY5ine4TvPihGqW8UHJfch2cokjAPzV8i"
 );
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
@@ -57,10 +59,10 @@ const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
 // Misc programs.
 //
 const AUTHORIZATION_RULES_PROGRAM_ID = new PublicKey(
-  "CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR"
+  "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg"
 );
 const AUTHORIZATION_RULES = new PublicKey(
-  "CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR"
+  "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
 );
 
 describe("soul-bound-authority", () => {
@@ -179,6 +181,8 @@ describe("soul-bound-authority", () => {
       uri: "https://arweave.net/my-content-hash",
       isMutable: true,
       collection: collection.mintAddress,
+      tokenStandard: TokenStandard.ProgrammableNonFungible,
+      ruleSet: AUTHORIZATION_RULES,
     });
     nftB = await metaplex.nfts().create({
       name: "My Digital Collectible 2",
@@ -186,8 +190,11 @@ describe("soul-bound-authority", () => {
       uri: "https://arweave.net/my-content-hash2",
       isMutable: true,
       collection: collection.mintAddress,
+      tokenStandard: TokenStandard.ProgrammableNonFungible,
+      ruleSet: AUTHORIZATION_RULES,
     });
 
+    /*
     await metaplex.nfts().verifyCollection({
       mintAddress: nftA.mintAddress,
       collectionMintAddress: collection.mintAddress,
@@ -196,11 +203,22 @@ describe("soul-bound-authority", () => {
       mintAddress: nftB.mintAddress,
       collectionMintAddress: collection.mintAddress,
     });
+		*/
+
+    const ata = await anchor.utils.token.associatedAddress({
+      mint: nftA.mintAddress,
+      owner: program.provider.publicKey,
+    });
 
     const n = await metaplex.nfts().findByMint({
       mintAddress: nftA.mintAddress,
     });
-    console.log("ARMANI NFT A", n);
+
+    const n2 = await metaplex.nfts().findByToken({
+      token: ata,
+    });
+
+    //    console.log("ARMANI NFT A", n, n2);
   });
 
   it("Creates a soul bound authority A", async () => {
@@ -288,7 +306,7 @@ describe("soul-bound-authority", () => {
     const stakePoolA = await stakePoolProgram.account.stakePool.fetch(
       stakePool
     );
-    console.log("HERE", stakePoolA);
+    //    console.log("HERE", stakePoolA);
   });
 
   it("Initializes a reward distributor", async () => {
@@ -363,14 +381,14 @@ describe("soul-bound-authority", () => {
     )[0];
     const ata = await anchor.utils.token.associatedAddress({
       mint: nftA.mintAddress,
-      owner: program.provider.publicKey,
+      owner: user,
     });
     const tokenRecord = PublicKey.findProgramAddressSync(
       [
         Buffer.from("metadata"),
         TOKEN_METADATA_PROGRAM_ID.toBuffer(),
         nftA.mintAddress.toBuffer(),
-        Buffer.from("token-record"),
+        Buffer.from("token_record"),
         ata.toBuffer(),
       ],
       TOKEN_METADATA_PROGRAM_ID
@@ -396,7 +414,14 @@ describe("soul-bound-authority", () => {
         rewardDistributorProgram: rewardDistributorProgram.programId,
         systemProgram: SystemProgram.programId,
       })
-      .rpc();
+      .preInstructions([
+        ComputeBudgetProgram.setComputeUnitLimit({
+          units: 1000000,
+        }),
+      ])
+      .rpc({
+        skipPreflight: true,
+      });
   });
 
   it("Stakes an nft B", async () => {
