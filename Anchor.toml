@@ -43,7 +43,7 @@ program = "./deps/cardinal-staking/target/deploy/cardinal_stake_pool.so"
 # local testing.
 #
 [test.validator]
-url = "https://api.mainnet-beta.solana.com"
+url = "https://swr.xnfts.dev/rpc-proxy"
 
 #
 # Metaplex Authorization Rules program.
@@ -66,3 +66,75 @@ address = "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg"
 #
 [[test.validator.clone]]
 address = "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+
+#
+# NFT #30 (Mad Lads #8925)
+# Mint address
+#
+[[test.validator.clone]]
+address = "3yYLEY3gPNHskKfyDZk3JRbDh7uSi1MKB3ffS9GEZXUJ"
+#
+# Associated Token Account address
+#
+[[test.validator.clone]]
+address = "EzTUNAmoqj6FB7ygqTAMA3ttYEgyn9GAFUVm3mdYEgD"
+#
+# Token record.
+#
+[[test.validator.clone]]
+address = "GB9AtxpkV8kSmWsdWzxTg5XTxi6igJHzdu85uz5VM2ww"
+#
+# Metadata Program Derived address
+#
+[[test.validator.clone]]
+address = "CXxbKaC8FmdUrr32AhD2W6G9FgNBN8w2sPWwVuU2JwZV"
+#
+# Master Edition.
+#
+[[test.validator.clone]]
+address = "5V4QUvLjtPfX8tjQncxw8UtPRxh9WHrAE5nVeuPxPvUz"
+
+#
+## NFT #15 (Mad Lads #9716)
+# Mint address
+#
+[[test.validator.clone]]
+address = "4B18U9PqtKFEwsHnZECyRewmh4zrFUo1Pxyf3Lwf1EMq"
+#
+# Associated Token Account address
+#
+[[test.validator.clone]]
+address = "ERQD3CvzRe2RZJR7VJ3DPXZjA84A723CuaVM4f4RwtMF"
+#
+# Token record.
+#
+[[test.validator.clone]]
+address = "4tgdRjrFZSKC3aHa8AADwQqhVZ83uCgSaKPgju5k21RZ"
+#
+# Metadata Program Derived address
+#
+[[test.validator.clone]]
+address = "YUrTVSrA3FUJF5bF4awASUjd7nvvg9jv5urGitBxbPn"
+#
+# Master Edition.
+#
+[[test.validator.clone]]
+address = "DwSMnFDJgUsDUwQXeC6Nd6NiUK1xkUfTzgAv7iB9LNFa"
+
+#
+# Mad Lads Collection NFT.
+#
+# Mint address
+#
+[[test.validator.clone]]
+address = "J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w"
+#
+# Metadata Program Derived address
+#
+[[test.validator.clone]]
+address = "8KyuwGzav7jTW9YaBGj2Qtp2q24zPUR3rD5caojXaby4"
+#
+# Master Edition.
+#
+[[test.validator.clone]]
+address = "2G5CotQ6Q87yhZxKUWkwLY6Foi12Q3VFQ6KN4nTLbPSz"

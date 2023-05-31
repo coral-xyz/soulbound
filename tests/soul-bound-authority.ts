@@ -24,7 +24,6 @@ import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
   keypairIdentity as umiKeypairIdentity,
   publicKey,
-  transactionBuilder,
 } from "@metaplex-foundation/umi";
 import {
   verifyCollectionV1,
@@ -42,14 +41,6 @@ import {
 import { assert } from "chai";
 
 const BN = anchor.BN;
-
-//
-// If this changes, we need to change it in the cardinal-reward-distributor
-// state.rs file.
-//
-const ARMANI_AUTHORITY = new PublicKey(
-  "F74rNS2dQmsCbVeW5iNgFUSWtdAPxJvJxwbrhieTyHLd"
-);
 
 //
 // If these program ids ever change, make sure to change the Anchor.toml.
@@ -72,6 +63,17 @@ const AUTHORIZATION_RULES_PROGRAM_ID = new PublicKey(
 );
 const AUTHORIZATION_RULES = new PublicKey(
   "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+);
+
+const USE_BACKPACK_DEV_MAINNET_NFTS = false;
+
+//
+// If this changes, we need to change it in the cardinal-reward-distributor
+// state.rs file.
+//
+const ARMANI_AUTHORITY = new PublicKey(
+  //  "F74rNS2dQmsCbVeW5iNgFUSWtdAPxJvJxwbrhieTyHLd"
+  "EcxjN4mea6Ah9WSqZhLtSJJCZcxY73Vaz6UVHFZZ5Ttz"
 );
 
 describe("soul-bound-authority", () => {
@@ -183,6 +185,43 @@ describe("soul-bound-authority", () => {
   });
 
   it("Setup: creates two nfts, verified as part of the same collection", async () => {
+    if (USE_BACKPACK_DEV_MAINNET_NFTS) {
+      collection = {
+        mintAddress: new PublicKey(
+          "J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w"
+        ),
+        masterEditionAddress: new PublicKey(
+          "2G5CotQ6Q87yhZxKUWkwLY6Foi12Q3VFQ6KN4nTLbPSz"
+        ),
+        metadataAddress: new PublicKey(
+          "8KyuwGzav7jTW9YaBGj2Qtp2q24zPUR3rD5caojXaby4"
+        ),
+      };
+      nftA = {
+        mintAddress: new PublicKey(
+          "3yYLEY3gPNHskKfyDZk3JRbDh7uSi1MKB3ffS9GEZXUJ"
+        ),
+        masterEditionAddress: new PublicKey(
+          "5V4QUvLjtPfX8tjQncxw8UtPRxh9WHrAE5nVeuPxPvUz"
+        ),
+        metadataAddress: new PublicKey(
+          "CXxbKaC8FmdUrr32AhD2W6G9FgNBN8w2sPWwVuU2JwZV"
+        ),
+      };
+      nftB = {
+        mintAddress: new PublicKey(
+          "4B18U9PqtKFEwsHnZECyRewmh4zrFUo1Pxyf3Lwf1EMq"
+        ),
+        masterEditionAddress: new PublicKey(
+          "DwSMnFDJgUsDUwQXeC6Nd6NiUK1xkUfTzgAv7iB9LNFa"
+        ),
+        metadataAddress: new PublicKey(
+          "YUrTVSrA3FUJF5bF4awASUjd7nvvg9jv5urGitBxbPn"
+        ),
+      };
+      return;
+    }
+
     collection = await metaplex.nfts().create({
       name: "Mad Lads Collection Test",
       sellerFeeBasisPoints: 0,
@@ -271,21 +310,6 @@ describe("soul-bound-authority", () => {
       );
       await program.provider.sendAndConfirm(tx);
     })();
-
-    /*
-    const ata = await anchor.utils.token.associatedAddress({
-      mint: nftA.mintAddress,
-      owner: program.provider.publicKey,
-    });
-
-    const n = await metaplex.nfts().findByMint({
-      mintAddress: nftA.mintAddress,
-    });
-
-    const n2 = await metaplex.nfts().findByToken({
-      token: ata,
-    });
-		*/
   });
 
   it("Creates a soul bound authority A", async () => {
@@ -352,11 +376,8 @@ describe("soul-bound-authority", () => {
       .initPool({
         overlayText: "Fock it.",
         imageUri: "https://www.madlads.com/mad_lads_logo.svg",
-        requiresCollections: [
-          //          new PublicKey("J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w"),
-          collection.mintAddress,
-        ],
-        requiresCreators: [], // TODO: Is this needed?
+        requiresCollections: [collection.mintAddress],
+        requiresCreators: [],
         requiresAuthorization: true,
         authority: program.provider.publicKey, // TODO: What is this?
         resetOnStake: false,
