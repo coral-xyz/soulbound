@@ -5,6 +5,9 @@
     },
     "dependencies": {
         "@metaplex-foundation/js": "^0.19.3",
+        "@metaplex-foundation/mpl-token-metadata": "3.0.0-alpha.13",
+        "@metaplex-foundation/umi": "^0.7.10",
+        "@metaplex-foundation/umi-bundle-defaults": "^0.7.10",
         "@project-serum/anchor": "^0.25.0",
         "@solana/spl-token": "^0.3.7"
     },

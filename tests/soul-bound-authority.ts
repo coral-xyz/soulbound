@@ -3,13 +3,13 @@ import { Program, Spl } from "@project-serum/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  mintTo,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 import {
   sendAndConfirmTransaction,
   Transaction,
+  TransactionInstruction,
   Connection,
   Signer,
   ConfirmOptions,
@@ -20,7 +20,16 @@ import {
   SYSVAR_INSTRUCTIONS_PUBKEY,
 } from "@solana/web3.js";
 import { keypairIdentity, Metaplex } from "@metaplex-foundation/js";
-import { TokenStandard } from "@metaplex-foundation/mpl-token-metadata";
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import {
+  keypairIdentity as umiKeypairIdentity,
+  publicKey,
+  transactionBuilder,
+} from "@metaplex-foundation/umi";
+import {
+  verifyCollectionV1,
+  TokenStandard,
+} from "@metaplex-foundation/mpl-token-metadata";
 import { SoulBoundAuthority } from "../target/types/soul_bound_authority";
 import {
   IDL as CardinalRewardDistributorIdl,
@@ -85,6 +94,11 @@ describe("soul-bound-authority", () => {
   const token = Spl.token();
   const metaplex = new Metaplex(program.provider.connection).use(
     keypairIdentity(program.provider.wallet.payer)
+  );
+
+  // @ts-ignore
+  const umi = createUmi(program.provider.connection._rpcEndpoint).use(
+    umiKeypairIdentity(program.provider.wallet.payer)
   );
 
   //
@@ -194,17 +208,71 @@ describe("soul-bound-authority", () => {
       ruleSet: AUTHORIZATION_RULES,
     });
 
-    /*
-    await metaplex.nfts().verifyCollection({
-      mintAddress: nftA.mintAddress,
-      collectionMintAddress: collection.mintAddress,
-    });
-    await metaplex.nfts().verifyCollection({
-      mintAddress: nftB.mintAddress,
-      collectionMintAddress: collection.mintAddress,
-    });
-		*/
+    //
+    // Verify nftA.
+    //
+    await (async () => {
+      const ix = verifyCollectionV1(umi, {
+        metadata: publicKey(nftA.metadataAddress.toString()),
+        collectionMint: publicKey(collection.mintAddress.toString()),
+      }).items[0].instruction;
+      //
+      // Total hack because I don't know wtf this metaplex API is doing.
+      //
+      const keys = ix.keys
+        .slice(0, 1)
+        .map((i) => ({ ...i, pubkey: new PublicKey(i.pubkey.toString()) }))
+        .concat(
+          ix.keys.slice(1).map((i) => ({
+            ...i,
+            pubkey: new PublicKey(i.pubkey.bytes),
+          }))
+        );
+      const data = Buffer.from(ix.data);
+      const programId = new PublicKey(ix.programId.bytes);
+      const tx = new Transaction().add(
+        new TransactionInstruction({
+          keys,
+          data,
+          programId,
+        })
+      );
+      await program.provider.sendAndConfirm(tx);
+    })();
 
+    //
+    // Verify nftB.
+    //
+    await (async () => {
+      const ix = verifyCollectionV1(umi, {
+        metadata: publicKey(nftB.metadataAddress.toString()),
+        collectionMint: publicKey(collection.mintAddress.toString()),
+      }).items[0].instruction;
+      //
+      // Total hack because I don't know wtf this metaplex API is doing.
+      //
+      const keys = ix.keys
+        .slice(0, 1)
+        .map((i) => ({ ...i, pubkey: new PublicKey(i.pubkey.toString()) }))
+        .concat(
+          ix.keys.slice(1).map((i) => ({
+            ...i,
+            pubkey: new PublicKey(i.pubkey.bytes),
+          }))
+        );
+      const data = Buffer.from(ix.data);
+      const programId = new PublicKey(ix.programId.bytes);
+      const tx = new Transaction().add(
+        new TransactionInstruction({
+          keys,
+          data,
+          programId,
+        })
+      );
+      await program.provider.sendAndConfirm(tx);
+    })();
+
+    /*
     const ata = await anchor.utils.token.associatedAddress({
       mint: nftA.mintAddress,
       owner: program.provider.publicKey,
@@ -217,8 +285,7 @@ describe("soul-bound-authority", () => {
     const n2 = await metaplex.nfts().findByToken({
       token: ata,
     });
-
-    //    console.log("ARMANI NFT A", n, n2);
+		*/
   });
 
   it("Creates a soul bound authority A", async () => {
