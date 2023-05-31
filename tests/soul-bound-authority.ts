@@ -182,7 +182,7 @@ describe("soul-bound-authority", () => {
       .rpc();
   });
 
-  it("Setup: creates an nft", async () => {
+  it("Setup: creates two nfts, verified as part of the same collection", async () => {
     collection = await metaplex.nfts().create({
       name: "Mad Lads Collection Test",
       sellerFeeBasisPoints: 0,
@@ -370,10 +370,6 @@ describe("soul-bound-authority", () => {
         identifier,
       })
       .rpc();
-    const stakePoolA = await stakePoolProgram.account.stakePool.fetch(
-      stakePool
-    );
-    //    console.log("HERE", stakePoolA);
   });
 
   it("Initializes a reward distributor", async () => {
@@ -427,7 +423,11 @@ describe("soul-bound-authority", () => {
       .rpc();
   });
 
-  it("Stakes an nft A", async () => {
+  const stake = async (nftA: {
+    mintAddress: PublicKey;
+    masterEditionAddress: PublicKey;
+    metadataAddress: PublicKey;
+  }) => {
     const user = program.provider.publicKey;
     const stakeEntry = PublicKey.findProgramAddressSync(
       [
@@ -489,10 +489,14 @@ describe("soul-bound-authority", () => {
       .rpc({
         skipPreflight: true,
       });
+  };
+
+  it("Stakes an nft A", async () => {
+    await stake(nftA);
   });
 
   it("Stakes an nft B", async () => {
-    // todo
+    await stake(nftB);
   });
 
   it("Waits for time to pass to accrue reward", async () => {
@@ -515,12 +519,62 @@ describe("soul-bound-authority", () => {
     // todo
   });
 
+  const unstake = async (nftA: {
+    mintAddress: PublicKey;
+    masterEditionAddress: PublicKey;
+    metadataAddress: PublicKey;
+  }) => {
+    const user = program.provider.publicKey;
+    const stakeEntry = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("stake-entry"),
+        stakePool.toBuffer(),
+        nftA.mintAddress.toBuffer(),
+        getStakeSeed(1, user).toBuffer(),
+      ],
+      stakePoolProgram.programId
+    )[0];
+    const ata = await anchor.utils.token.associatedAddress({
+      mint: nftA.mintAddress,
+      owner: user,
+    });
+    const tokenRecord = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        nftA.mintAddress.toBuffer(),
+        Buffer.from("token_record"),
+        ata.toBuffer(),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    )[0];
+    await stakePoolProgram.methods
+      .unstakeProgrammable()
+      .accounts({
+        stakeEntry,
+        stakePool,
+        originalMint: nftA.mintAddress,
+        user,
+        userOriginalMintTokenAccount: ata,
+        userOriginalMintTokenRecord: tokenRecord,
+        mintMetadata: nftA.metadataAddress,
+        mintEdition: nftA.masterEditionAddress,
+        authorizationRules: AUTHORIZATION_RULES,
+        sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        authorizationRulesProgram: AUTHORIZATION_RULES_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  };
+
   it("Unstakes nft A", async () => {
-    // todo
+    await unstake(nftA);
   });
 
   it("Unstakes nft B", async () => {
-    // todo
+    await unstake(nftB);
   });
 });
 
@@ -573,20 +627,3 @@ function getStakeSeed(supply: number, user: PublicKey): PublicKey {
     return PublicKey.default;
   }
 }
-/*
-			.remainingAccounts([
-				{
-					isSigner: false,
-					isWritable: false,
-					pubkey: stakeEntryAuthorizationRecord,
-				}
-			])}
-		const stakeEntryAuthorizationRecord = PublicKey.findProgramAddressSync(
-			[
-				Buffer.from("stake-authorization"),
-				stakePool.toBuffer(),
-				nftA.mintAddress.toBuffer(),
-			],
-			stakePoolProgram.programId,
-		)[0];
-*/
