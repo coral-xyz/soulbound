@@ -2,6 +2,13 @@
 seeds = true
 skip-lint = false
 
+#
+# Need to sync this in many files
+#
+# - here
+# - lib.rs declare_id!
+# - state.rs cardinal-reward-distributor
+#
 [programs.localnet]
 soul_bound_authority = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 

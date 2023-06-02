@@ -5,6 +5,7 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
+  getAccount,
 } from "@solana/spl-token";
 import {
   sendAndConfirmTransaction,
@@ -39,6 +40,7 @@ import {
   CardinalStakePool,
 } from "../deps/cardinal-staking/target/types/cardinal_stake_pool";
 import { assert } from "chai";
+import { rewardDistributor } from "../deps/cardinal-staking/src";
 
 const BN = anchor.BN;
 
@@ -159,28 +161,6 @@ describe("soul-bound-authority", () => {
           programId: token.programId,
         }),
       ])
-      .rpc();
-  });
-
-  it("Setup: mints the gold to a system-program owned treasury account", async () => {
-    await createAssociatedTokenAccount(
-      program.provider.connection, // conection
-      program.provider.wallet.payer, // payer
-      goldMint, // mint
-      ARMANI_AUTHORITY // owner of ata
-    );
-
-    const goldAta = await anchor.utils.token.associatedAddress({
-      mint: goldMint,
-      owner: ARMANI_AUTHORITY,
-    });
-    await token.methods
-      .mintTo(new BN(10000))
-      .accounts({
-        mint: goldMint,
-        to: goldAta,
-        authority: ARMANI_AUTHORITY,
-      })
       .rpc();
   });
 
@@ -398,23 +378,12 @@ describe("soul-bound-authority", () => {
       [Buffer.from("reward-distributor"), stakePool.toBuffer()],
       rewardDistributorProgram.programId
     )[0];
-    const goldAta = await anchor.utils.token.associatedAddress({
-      mint: goldMint,
-      owner: ARMANI_AUTHORITY,
-    });
-    const rewardDistributorAta = await createAssociatedTokenAccount(
-      program.provider.connection, // conection
-      program.provider.wallet.payer, // payer
-      goldMint, // mint
-      rewardDistributor // owner of ata
-    );
-
     await rewardDistributorProgram.methods
       .initRewardDistributor({
-        rewardAmount: new BN(1), // TODO
-        rewardDurationSeconds: new BN(1), // TODO
-        kind: 2, // Treasury (rather than Mint).
-        supply: new BN(1), // TODO
+        rewardAmount: new BN(1), // Amount of rewards received every timestep.
+        rewardDurationSeconds: new BN(1), // Timestep for each reward.
+        kind: 1, // Mint (rather than Treasury).
+        supply: new BN(0), // Not used.
         maxSupply: null,
         defaultMultiplier: null,
         multiplierDecimals: null,
@@ -429,18 +398,6 @@ describe("soul-bound-authority", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
-      .remainingAccounts([
-        {
-          isWritable: true,
-          isSigner: false,
-          pubkey: rewardDistributorAta, // reward distributor token account
-        },
-        {
-          isWritable: true,
-          isSigner: false,
-          pubkey: goldAta, // authority token account
-        },
-      ])
       .rpc();
   });
 
@@ -520,24 +477,208 @@ describe("soul-bound-authority", () => {
     await stake(nftB);
   });
 
+  const fetchStakeEntry = async (nftA) => {
+    const user = program.provider.publicKey;
+    const stakeEntry = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("stake-entry"),
+        stakePool.toBuffer(),
+        nftA.mintAddress.toBuffer(),
+        getStakeSeed(1, user).toBuffer(),
+      ],
+      stakePoolProgram.programId
+    )[0];
+    return await stakePoolProgram.account.stakeEntry.fetch(stakeEntry);
+  };
+
+  const fetchRewardEntry = async (nftA) => {
+    const user = program.provider.publicKey;
+    const stakeEntry = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("stake-entry"),
+        stakePool.toBuffer(),
+        nftA.mintAddress.toBuffer(),
+        getStakeSeed(1, user).toBuffer(),
+      ],
+      stakePoolProgram.programId
+    )[0];
+    const rewardEntry = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("reward-entry"),
+        rewardDistributor.toBuffer(),
+        stakeEntry.toBuffer(),
+      ],
+      rewardDistributorProgram.programId
+    )[0];
+    const rewardEntryAccount =
+      await rewardDistributorProgram.account.rewardEntry.fetch(rewardEntry);
+    return rewardEntryAccount;
+  };
+
   it("Waits for time to pass to accrue reward", async () => {
-    // todo
+    const pointsBefore = await readGoldPoints(nftA);
+    console.log("ARMANI BEFORE", pointsBefore.toString());
+    await sleep(10 * 1000);
+    const pointsAfter = await readGoldPoints(nftA);
+    console.log("ARMANI AFTER", pointsAfter.toString());
   });
 
-  it("Claims a reward", async () => {
-    // todo
-  });
+  //
+  // Gold points are calculated with two components
+  //
+  // - the amount sitting in the on chain account (these are soul bound
+  //   and unspendable and arrive only via the claim instruction)
+  // - the amount unclaimed and so must be calculated
+  //
+  const readGoldPoints = async (nftA: {
+    mintAddress: PublicKey;
+    masterEditionAddress: PublicKey;
+    metadataAddress: PublicKey;
+  }) => {
+    const user = program.provider.publicKey;
+    const scopedSbaUserAuthority = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("sba-scoped-user-program"),
+        user.toBuffer(),
+        rewardDistributorProgram.programId.toBuffer(),
+      ],
+      program.programId
+    )[0];
+    const userRewardMintTokenAccount = await getAssociatedTokenAddress(
+      goldMint,
+      scopedSbaUserAuthority,
+      true
+    );
 
-  it("Waits for time to pass to accrue rewards again", async () => {
-    // todo
-  });
+    const claimedAmount = await (async () => {
+      try {
+        const rewardTokenAccount = await getAccount(
+          program.provider.connection,
+          userRewardMintTokenAccount
+        );
+        return new BN(rewardTokenAccount.amount.toString());
+      } catch {
+        return new BN(0);
+      }
+    })();
 
-  it("Transfers a reward from nft A to nft B", async () => {
-    // todo
+    let stakeEntryAcc = await fetchStakeEntry(nftA);
+    let rewardEntryAcc = await fetchRewardEntry(nftA);
+
+    const totalStakeSeconds = stakeEntryAcc.totalStakeSeconds.add(
+      stakeEntryAcc.amount.eq(new BN(0))
+        ? new BN(0)
+        : new BN(Date.now() / 1000).sub(stakeEntryAcc.lastUpdatedAt)
+    );
+    const rewardSecondsReceived = rewardEntryAcc.rewardSecondsReceived;
+    const rewardDistributorAcc =
+      await rewardDistributorProgram.account.rewardDistributor.fetch(
+        rewardDistributor
+      );
+    let rewardAmountToReceive = totalStakeSeconds
+      .sub(rewardSecondsReceived)
+      .div(rewardDistributorAcc.rewardDurationSeconds)
+      .mul(rewardDistributorAcc.rewardAmount)
+      .mul(new BN(1))
+      .div(new BN(10).pow(new BN(rewardDistributorAcc.multiplierDecimals)));
+
+    return claimedAmount.add(rewardAmountToReceive);
+  };
+
+  const claimReward = async (nftA) => {
+    const [sba] = PublicKey.findProgramAddressSync(
+      [Buffer.from("sba"), nftA.mintAddress.toBuffer()],
+      program.programId
+    );
+    const user = program.provider.publicKey;
+    const scopedSbaUserAuthority = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("sba-scoped-user-program"),
+        user.toBuffer(),
+        rewardDistributorProgram.programId.toBuffer(),
+      ],
+      program.programId
+    )[0];
+    const stakeEntry = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("stake-entry"),
+        stakePool.toBuffer(),
+        nftA.mintAddress.toBuffer(),
+        getStakeSeed(1, user).toBuffer(),
+      ],
+      stakePoolProgram.programId
+    )[0];
+    const rewardEntry = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("reward-entry"),
+        rewardDistributor.toBuffer(),
+        stakeEntry.toBuffer(),
+      ],
+      rewardDistributorProgram.programId
+    )[0];
+    const userRewardMintTokenAccount = await getAssociatedTokenAddress(
+      goldMint,
+      scopedSbaUserAuthority,
+      true
+    );
+    let { data, keys } = await rewardDistributorProgram.methods
+      .claimRewards()
+      .accounts({
+        rewardEntry,
+        rewardDistributor,
+        stakeEntry,
+        stakePool,
+        originalMint: nftA.mintAddress,
+        rewardMint: goldMint,
+        userRewardMintTokenAccount,
+        authority: scopedSbaUserAuthority,
+        user,
+      })
+      .instruction();
+
+    // Need to set the signer on the PDA to false so that we can serialize
+    // the transaction without error. The CPI in the program will flip this
+    // back to true before signging with PDA seeds.
+    keys = keys.map((k) => {
+      return {
+        ...k,
+        isSigner: k.pubkey.equals(scopedSbaUserAuthority) ? false : k.isSigner,
+      };
+    });
+
+    await program.methods
+      .executeTxScopedUserProgram(data)
+      .accounts({
+        sba,
+        nftMint: nftA.mintAddress,
+        nftToken: await getAssociatedTokenAddress(nftA.mintAddress, user),
+        authority: user,
+        delegate: SystemProgram.programId, // TODO: need to fix this.
+        authorityOrDelegate: user,
+        scopedAuthority: scopedSbaUserAuthority,
+        program: rewardDistributorProgram.programId,
+      })
+      .remainingAccounts(keys)
+      .preInstructions([
+        await stakePoolProgram.methods
+          .updateTotalStakeSeconds()
+          .accounts({
+            stakeEntry,
+            lastStaker: program.provider.publicKey,
+          })
+          .instruction(),
+      ])
+      .rpc({
+        skipPreflight: true,
+      });
+  };
+
+  it("Claims a reward for nft a", async () => {
+    await claimReward(nftA);
   });
 
   it("Claims a reward from nft B", async () => {
-    // todo
+    await claimReward(nftB);
   });
 
   const unstake = async (nftA: {
@@ -597,9 +738,16 @@ describe("soul-bound-authority", () => {
   it("Unstakes nft B", async () => {
     await unstake(nftB);
   });
+
+  it("Waits for time to pass to accrue reward", async () => {
+    const pointsBefore = await readGoldPoints(nftA);
+    console.log("ARMANI BEFORE", pointsBefore.toString());
+    await sleep(10 * 1000);
+    const pointsAfter = await readGoldPoints(nftA);
+    console.log("ARMANI AFTER", pointsAfter.toString());
+  });
 });
 
-//
 export async function createAssociatedTokenAccount(
   connection: Connection,
   payer: Signer,
@@ -638,8 +786,6 @@ export async function createAssociatedTokenAccount(
   return associatedToken;
 }
 
-//
-
 // Supply is the token supply of the nft mint.
 function getStakeSeed(supply: number, user: PublicKey): PublicKey {
   if (supply > 1) {
@@ -647,4 +793,8 @@ function getStakeSeed(supply: number, user: PublicKey): PublicKey {
   } else {
     return PublicKey.default;
   }
+}
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
