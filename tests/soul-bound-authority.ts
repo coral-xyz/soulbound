@@ -40,7 +40,6 @@ import {
   CardinalStakePool,
 } from "../deps/cardinal-staking/target/types/cardinal_stake_pool";
 import { assert } from "chai";
-import { rewardDistributor } from "../deps/cardinal-staking/src";
 
 const BN = anchor.BN;
 
@@ -48,10 +47,10 @@ const BN = anchor.BN;
 // If these program ids ever change, make sure to change the Anchor.toml.
 //
 const CARDINAL_REWARD_DISTRIBUTOR_PROGRAM_ID = new PublicKey(
-  "rwdNPNPS6zNvtF6FMvaxPRjzu2eC51mXaDT9rmWsojp"
+  "9zNbk2SZKniByFWH8tg3LKqkXy7myRU611SbJJgPt4gd"
 );
 const CARDINAL_STAKE_POOL_PROGRAM_ID = new PublicKey(
-  "stkBL96RZkjY5ine4TvPihGqW8UHJfch2cokjAPzV8i"
+  "49DZXCfSbfFRUHUEeeVwtHUrcaPsUGe7K2ke2wuttDim"
 );
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
