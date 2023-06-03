@@ -141,10 +141,8 @@ describe("soul-bound-authority", () => {
     const goldMintKeypair = Keypair.generate();
     goldMint = goldMintKeypair.publicKey;
 
-    const goldMintAuthority = ARMANI_AUTHORITY;
-
     await token.methods
-      .initializeMint(1, goldMintAuthority, null)
+      .initializeMint(1, program.provider.publicKey, null)
       .accounts({
         mint: goldMint,
       })
@@ -379,7 +377,7 @@ describe("soul-bound-authority", () => {
         stakePool,
         rewardMint: goldMint,
         authority: ARMANI_AUTHORITY,
-        payer: ARMANI_AUTHORITY,
+        payer: program.provider.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -636,7 +634,7 @@ describe("soul-bound-authority", () => {
       .accounts({
         sbaUser,
         authority: user,
-        delegate: SystemProgram.programId, // TODO: need to fix this.
+        delegate: PublicKey.default, // None.
         authorityOrDelegate: user,
         scopedAuthority: scopedSbaUserAuthority,
         program: rewardDistributorProgram.programId,

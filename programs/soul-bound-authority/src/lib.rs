@@ -3,7 +3,7 @@ use anchor_lang::solana_program;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_spl::token::{self, FreezeAccount, Mint, MintTo, Token, TokenAccount};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS");
 
 // Soul bound authority account namespace.
 pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
@@ -162,7 +162,6 @@ pub struct ExecuteTransactionScopedUserProgram<'info> {
             || delegate.key() == authority_or_delegate.key()
     )]
     pub authority_or_delegate: Signer<'info>,
-
     /// CHECK: seeds constraint.
     #[account(
         seeds = [NS_SBA_SCOPED_USER_PROGRAM, authority.key().as_ref(), program.key().as_ref()],
