@@ -292,41 +292,26 @@ describe("soul-bound-authority", () => {
     })();
   });
 
-  it("Creates a soul bound authority A", async () => {
+  it("Creates a soul bound authority for the user", async () => {
     const [_sba, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("sba"), nftA.mintAddress.toBuffer()],
+      [Buffer.from("sba-scoped-user"), program.provider.publicKey.toBuffer()],
       program.programId
     );
     sba = _sba;
     await program.methods
-      .createSba()
+      .createSbaUser()
       .accounts({
-        nftMint: nftA.mintAddress,
         sba,
       })
       .rpc();
 
-    const sbaAccount = await program.account.soulBoundAuthority.fetch(sba);
+    const sbaAccount = await program.account.soulBoundAuthorityUser.fetch(sba);
     assert.equal(sbaAccount.bump, bump);
-    assert.equal(sbaAccount.nftMint.toString(), nftA.mintAddress.toString());
-  });
-
-  it("Creates a soul bound authority B", async () => {
-    const [sba, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("sba"), nftB.mintAddress.toBuffer()],
-      program.programId
+    assert.equal(
+      sbaAccount.authority.toString(),
+      program.provider.publicKey.toString()
     );
-    await program.methods
-      .createSba()
-      .accounts({
-        nftMint: nftB.mintAddress,
-        sba,
-      })
-      .rpc();
-
-    const sbaAccount = await program.account.soulBoundAuthority.fetch(sba);
-    assert.equal(sbaAccount.bump, bump);
-    assert.equal(sbaAccount.nftMint.toString(), nftB.mintAddress.toString());
+    assert.equal(sbaAccount.delegate.toString(), PublicKey.default.toString());
   });
 
   it("Initializes a stake identifier", async () => {
@@ -586,11 +571,11 @@ describe("soul-bound-authority", () => {
   };
 
   const claimReward = async (nftA) => {
-    const [sba] = PublicKey.findProgramAddressSync(
-      [Buffer.from("sba"), nftA.mintAddress.toBuffer()],
+    const user = program.provider.publicKey;
+    const [sbaUser] = PublicKey.findProgramAddressSync(
+      [Buffer.from("sba-scoped-user"), user.toBuffer()],
       program.programId
     );
-    const user = program.provider.publicKey;
     const scopedSbaUserAuthority = PublicKey.findProgramAddressSync(
       [
         Buffer.from("sba-scoped-user-program"),
@@ -649,9 +634,7 @@ describe("soul-bound-authority", () => {
     await program.methods
       .executeTxScopedUserProgram(data)
       .accounts({
-        sba,
-        nftMint: nftA.mintAddress,
-        nftToken: await getAssociatedTokenAddress(nftA.mintAddress, user),
+        sbaUser,
         authority: user,
         delegate: SystemProgram.programId, // TODO: need to fix this.
         authorityOrDelegate: user,

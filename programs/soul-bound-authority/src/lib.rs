@@ -6,7 +6,7 @@ use anchor_spl::token::{self, FreezeAccount, Mint, MintTo, Token, TokenAccount};
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 // Soul bound authority account namespace.
-pub const NS_SBA: &[u8] = b"sba";
+pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 
 // Soul bound authority scoped to a specific program namespace. These
 // authorities should always be the authorities controlling any assets
@@ -21,10 +21,11 @@ pub mod soul_bound_authority {
     // Initialization.
     ////////////////////////////////////////////////////////////////////////////
 
-    pub fn create_sba(ctx: Context<CreateSba>) -> Result<()> {
+    pub fn create_sba_user(ctx: Context<CreateSbaUser>) -> Result<()> {
         let mut sba = &mut ctx.accounts.sba;
-        sba.nft_mint = ctx.accounts.nft_mint.key();
         sba.bump = *ctx.bumps.get("sba").unwrap();
+        sba.authority = ctx.accounts.authority.key();
+        sba.delegate = Pubkey::default();
         Ok(())
     }
 
@@ -34,13 +35,13 @@ pub mod soul_bound_authority {
 
     pub fn accept_delegate(ctx: Context<AcceptDelegate>) -> Result<()> {
         let mut sba = &mut ctx.accounts.sba;
-        sba.delegate = Some(ctx.accounts.delegate.key());
+        sba.delegate = ctx.accounts.delegate.key();
         Ok(())
     }
 
     pub fn revoke_delegate(ctx: Context<RevokeDelegate>) -> Result<()> {
         let mut sba = &mut ctx.accounts.sba;
-        sba.delegate = None;
+        sba.delegate = Pubkey::default();
         Ok(())
     }
 
@@ -56,10 +57,8 @@ pub mod soul_bound_authority {
         ctx: Context<ExecuteTransactionScopedUserProgram>,
         data: Vec<u8>,
     ) -> Result<()> {
-        lazily_wipe_delegate(&mut ctx.accounts.sba, &ctx.accounts.authority)?;
-
         let bump = *ctx.bumps.get("scoped_authority").unwrap();
-        let sba = ctx.accounts.sba.key();
+        let sba = ctx.accounts.sba_user.key();
         let program = ctx.accounts.program.key();
         let authority_key = ctx.accounts.authority.key();
         let seeds = &[
@@ -99,20 +98,20 @@ pub mod soul_bound_authority {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Accounts)]
-pub struct CreateSba<'info> {
-    pub nft_mint: Account<'info, Mint>,
+pub struct CreateSbaUser<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8+ SoulBoundAuthority::LEN,
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
+        space = 8+ SoulBoundAuthorityUser::LEN,
+        seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
         bump,
     )]
-    pub sba: Account<'info, SoulBoundAuthority>,
+    pub sba: Account<'info, SoulBoundAuthorityUser>,
 
     ////////////////////////////////////////////////////////////////////////////
     // Inferred.
     ////////////////////////////////////////////////////////////////////////////
+    pub authority: Signer<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -122,17 +121,11 @@ pub struct CreateSba<'info> {
 
 #[derive(Accounts)]
 pub struct AcceptDelegate<'info> {
-    pub nft_mint: Account<'info, Mint>,
     #[account(
-        constraint = nft_token.owner == authority.key(),
-        constraint = nft_token.mint == nft_mint.key(),
-    )]
-    pub nft_token: Account<'info, TokenAccount>,
-    #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
+        seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
         bump = sba.bump,
     )]
-    pub sba: Account<'info, SoulBoundAuthority>,
+    pub sba: Account<'info, SoulBoundAuthorityUser>,
     pub authority: Signer<'info>,
     /// CHECK: no writes. Just setting delegate.
     pub delegate: UncheckedAccount<'info>,
@@ -140,17 +133,11 @@ pub struct AcceptDelegate<'info> {
 
 #[derive(Accounts)]
 pub struct RevokeDelegate<'info> {
-    pub nft_mint: Account<'info, Mint>,
     #[account(
-        constraint = nft_token.owner == authority.key(),
-        constraint = nft_token.mint == nft_mint.key(),
-    )]
-    pub nft_token: Account<'info, TokenAccount>,
-    #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
+        seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
         bump = sba.bump,
     )]
-    pub sba: Account<'info, SoulBoundAuthority>,
+    pub sba: Account<'info, SoulBoundAuthorityUser>,
     pub authority: Signer<'info>,
 }
 
@@ -160,23 +147,15 @@ pub struct RevokeDelegate<'info> {
 #[derive(Accounts)]
 pub struct ExecuteTransactionScopedUserProgram<'info> {
     #[account(
-        seeds = [NS_SBA, nft_mint.key().as_ref()],
-        bump = sba.bump,
+        seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
+        bump = sba_user.bump,
     )]
-    pub sba: Account<'info, SoulBoundAuthority>,
-    pub nft_mint: Account<'info, Mint>,
-    #[account(
-        constraint = nft_token.owner == authority.key(),
-        constraint = nft_token.mint == nft_mint.key(),
-    )]
-    pub nft_token: Account<'info, TokenAccount>,
-    /// CHECK: Checked via constraint on nft_token .
+    pub sba_user: Account<'info, SoulBoundAuthorityUser>,
+    /// CHECK: Checked via constraint.
+    #[account(constraint = sba_user.authority == authority.key())]
     pub authority: UncheckedAccount<'info>,
-    /// CHECK: Checked via constraint on sba.delegate.
-    //    #[account(
-    //        constraint = Some(delegate.key()) == sba.delegate
-    //    )]
-    // TODO:
+    /// CHECK: Checked via constraint.
+    #[account(constraint = sba_user.delegate == delegate.key())]
     pub delegate: UncheckedAccount<'info>,
     #[account(
         constraint = authority.key() == authority_or_delegate.key()
@@ -200,21 +179,17 @@ pub struct ExecuteTransactionScopedUserProgram<'info> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[account]
-pub struct SoulBoundAuthority {
-    // The last owner of the NFT.
-    //
-    // This field is tracked so that we can wipe the delegate whenever ownership
-    // changes on the NFT.
-    pub last_authority: Pubkey,
-    // The nft that controls this SBA.
-    pub nft_mint: Pubkey,
+pub struct SoulBoundAuthorityUser {
+    // This is soulbound and can never change.
+    pub authority: Pubkey,
     // The key that has the ability to CPI on behalf o this soul bound authority.
-    pub delegate: Option<Pubkey>,
+    // Pubkey::default() => None.
+    pub delegate: Pubkey,
     pub bump: u8,
 }
 
-impl SoulBoundAuthority {
-    pub const LEN: usize = 8 + 32 + 32 + 33;
+impl SoulBoundAuthorityUser {
+    pub const LEN: usize = (8 + 32 + 32 + 33) * 2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,27 +199,4 @@ impl SoulBoundAuthority {
 #[error_code]
 pub enum ErrorCode {
     Todo,
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Access control.
-////////////////////////////////////////////////////////////////////////////////
-
-//
-// If the owner of the mad lad has changed, then wipes the delegate and updates
-// the authority to the new owner. This needs to be called and checked
-// anytime an instruction uses any of the soul bound authority signers.
-//
-// Assumes the current_authority <> SBA nft relationship has been established by
-// constraints already.
-//
-pub fn lazily_wipe_delegate<'info>(
-    sba: &mut Account<'info, SoulBoundAuthority>,
-    current_authority: &AccountInfo<'info>,
-) -> Result<()> {
-    if sba.last_authority != current_authority.key() {
-        sba.last_authority = current_authority.key();
-        sba.delegate = None;
-    }
-    Ok(())
 }
