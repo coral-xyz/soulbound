@@ -16,7 +16,7 @@ soul_bound_authority = "7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS"
 soul_bound_authority = "7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS"
 
 [provider]
-cluster = "localnet"
+cluster = "mainnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

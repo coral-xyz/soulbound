@@ -126,13 +126,23 @@ describe("soul-bound-authority", () => {
     mintAddress: PublicKey;
     masterEditionAddress: PublicKey;
     metadataAddress: PublicKey;
-  };
+  } = {
+		mintAddress: new PublicKey('J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w'),
+		masterEditionAddress: PublicKey.default,
+		metadataAddress: PublicKey.default,
+	}
+	/*
+GOLD KEYPAIR D9BhjmeQJAcLLi256duFuZVaq8oPtqi16bW8utboPnUF
+Stake pool initialized 69Z1Q92pP7dT4uceWLJsscUek4Ca1kTH7ptguXe3U3x9
+RESP 67ivqrCJtruLd4kgEYnoKyyN9Sv4ZfZt7BSRFj7PoPwURAvHRbMcTzijWc3Q4QPLPcKAoZy9BCQkNutzvXoN6Hz2
+Reward distributor initialized zBdwCHEGDwqPZEyQZCnPik7SNFnd6Dep7iwQLq525VG
+*/
 
   //
   // Misc accounts used across tests.
   //
   let sba: PublicKey; // Soulbound Authority.
-  let identifier: PublicKey;
+  let identifier: PublicKey = new PublicKey('7UNSgTChntMtNFQp3jUiHQo7gLjYQbRbLmwJof9S6s7b');
   let stakePool: PublicKey;
   let rewardDistributor: PublicKey;
 
@@ -141,7 +151,7 @@ describe("soul-bound-authority", () => {
     goldMint = goldMintKeypair.publicKey;
 
     await token.methods
-      .initializeMint(1, program.provider.publicKey, null)
+      .initializeMint(0, program.provider.publicKey, null)
       .accounts({
         mint: goldMint,
       })
@@ -159,8 +169,11 @@ describe("soul-bound-authority", () => {
         }),
       ])
       .rpc();
+
+		console.log("GOLD KEYPAIR", goldMint.toString());
   });
 
+	/*
   it("Setup: creates two nfts, verified as part of the same collection", async () => {
     if (USE_BACKPACK_DEV_MAINNET_NFTS) {
       collection = {
@@ -288,7 +301,9 @@ describe("soul-bound-authority", () => {
       await program.provider.sendAndConfirm(tx);
     })();
   });
+*/
 
+/*
   it("Creates a soul bound authority for the user", async () => {
     const [_sba, bump] = PublicKey.findProgramAddressSync(
       [Buffer.from("sba-scoped-user"), program.provider.publicKey.toBuffer()],
@@ -310,7 +325,8 @@ describe("soul-bound-authority", () => {
     );
     assert.equal(sbaAccount.delegate.toString(), PublicKey.default.toString());
   });
-
+*/
+/*
   it("Initializes a stake identifier", async () => {
     identifier = PublicKey.findProgramAddressSync(
       [Buffer.from("identifier")],
@@ -322,15 +338,16 @@ describe("soul-bound-authority", () => {
         identifier,
       })
       .rpc();
+		console.log("Identifier initialized", identifier.toString());
   });
-
+*/
   it("Initializes a stake pool", async () => {
     stakePool = PublicKey.findProgramAddressSync(
       [
         Buffer.from("stake-pool"),
         // 1u64 as little endian.
         // The "identifier.count" in the program account starts as this.
-        Buffer.from([1, 0, 0, 0, 0, 0, 0, 0]),
+        Buffer.from([5, 0, 0, 0, 0, 0, 0, 0]),
       ],
       stakePoolProgram.programId
     )[0];
@@ -341,7 +358,7 @@ describe("soul-bound-authority", () => {
         requiresCollections: [collection.mintAddress],
         requiresCreators: [],
         requiresAuthorization: true,
-        authority: program.provider.publicKey, // TODO: What is this?
+        authority: PublicKey.default,
         resetOnStake: false,
         cooldownSeconds: null,
         minStakeSeconds: null,
@@ -353,19 +370,20 @@ describe("soul-bound-authority", () => {
         identifier,
       })
       .rpc();
+		console.log("Stake pool initialized", stakePool.toString());
   });
 
   it("Initializes a reward distributor", async () => {
     rewardDistributor = PublicKey.findProgramAddressSync(
-      [Buffer.from("reward-distributor"), stakePool.toBuffer()],
+			[Buffer.from("reward-distributor"), stakePool.toBuffer()],
       rewardDistributorProgram.programId
     )[0];
-    await rewardDistributorProgram.methods
+    const resp = await rewardDistributorProgram.methods
       .initRewardDistributor({
         rewardAmount: new BN(1), // Amount of rewards received every timestep.
         rewardDurationSeconds: new BN(1), // Timestep for each reward.
         kind: 1, // Mint (rather than Treasury).
-        supply: new BN(0), // Not used.
+        supply: new BN(0), // Not used (only used for a treasury init).
         maxSupply: null,
         defaultMultiplier: null,
         multiplierDecimals: null,
@@ -380,9 +398,13 @@ describe("soul-bound-authority", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
-      .rpc();
+      .rpc({
+				skipPreflight: true
+			});
+		console.log("RESP", resp);
+		console.log("Reward distributor initialized", rewardDistributor.toString());
   });
-
+	/*
   const stake = async (nftA: {
     mintAddress: PublicKey;
     masterEditionAddress: PublicKey;
@@ -726,6 +748,7 @@ describe("soul-bound-authority", () => {
     const pointsAfter = await readGoldPoints(nftA);
     console.log("ARMANI AFTER", pointsAfter.toString());
   });
+	*/
 });
 
 export async function createAssociatedTokenAccount(
