@@ -26,15 +26,15 @@ const BN = anchor.BN;
 // Mainnet constants.
 //
 const STAKE_POOL = new PublicKey(
-  "69Z1Q92pP7dT4uceWLJsscUek4Ca1kTH7ptguXe3U3x9"
+  "HGWDdk6LdLcW9feC9RAie4zj5jv8SCkTBqQqm8P6cfbJ"
 );
 const STAKE_POOL_IDENTIFIER = new PublicKey(
-  "7UNSgTChntMtNFQp3jUiHQo7gLjYQbRbLmwJof9S6s7b"
+  "5oN6LE8i499YJ8SNwyB9wfP2SET9AgRV297ascLkL1iy"
 );
 const REWARD_DISTRIBUTOR = new PublicKey(
-  "zBdwCHEGDwqPZEyQZCnPik7SNFnd6Dep7iwQLq525VG"
+  "3cmtf6GZNgXU1KiVV51BEWARcNTMRZcJj5jQUT8GBEr8"
 );
-const GOLD_MINT = new PublicKey("D9BhjmeQJAcLLi256duFuZVaq8oPtqi16bW8utboPnUF");
+const GOLD_MINT = new PublicKey("E8dDETfxy1bCHtdTDo5djFm1an44vWBV1ocH5bPnw9NC");
 
 //
 // If these program ids ever change, make sure to change the Anchor.toml.
