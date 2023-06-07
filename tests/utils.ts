@@ -40,10 +40,10 @@ const GOLD_MINT = new PublicKey("D9BhjmeQJAcLLi256duFuZVaq8oPtqi16bW8utboPnUF");
 // If these program ids ever change, make sure to change the Anchor.toml.
 //
 export const CARDINAL_REWARD_DISTRIBUTOR_PROGRAM_ID = new PublicKey(
-  "9zNbk2SZKniByFWH8tg3LKqkXy7myRU611SbJJgPt4gd"
+  "EWbVVjugB3C1jewxFi9wPbvUtUxbU24PErSVe2Tmf6Qu"
 );
 export const CARDINAL_STAKE_POOL_PROGRAM_ID = new PublicKey(
-  "49DZXCfSbfFRUHUEeeVwtHUrcaPsUGe7K2ke2wuttDim"
+  "6zdzehBogMiKxMuktMzwog6K22Gn2FF1VRUXn1DfYNTr"
 );
 export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"

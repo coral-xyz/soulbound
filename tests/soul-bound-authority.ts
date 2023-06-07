@@ -116,6 +116,8 @@ describe("soul-bound-authority", () => {
     const goldMintKeypair = Keypair.generate();
     goldMint = goldMintKeypair.publicKey;
 
+		console.log("ARMANI GOLD MINT", goldMint.toString());
+
     await token.methods
       .initializeMint(1, program.provider.publicKey, null)
       .accounts({
@@ -292,6 +294,7 @@ describe("soul-bound-authority", () => {
       [Buffer.from("identifier")],
       stakePoolProgram.programId
     )[0];
+		console.log("IDENTIFIER", identifier.toString());
     await stakePoolProgram.methods
       .initIdentifier()
       .accounts({
@@ -310,14 +313,15 @@ describe("soul-bound-authority", () => {
       ],
       stakePoolProgram.programId
     )[0];
+		console.log("STAKE POOL", stakePool.toString());
     await stakePoolProgram.methods
       .initPool({
         overlayText: "Fock it.",
         imageUri: "https://www.madlads.com/mad_lads_logo.svg",
         requiresCollections: [collection.mintAddress],
         requiresCreators: [],
-        requiresAuthorization: true,
-        authority: program.provider.publicKey, // TODO: What is this?
+        requiresAuthorization: false,
+        authority: SystemProgram.programId,
         resetOnStake: false,
         cooldownSeconds: null,
         minStakeSeconds: null,
@@ -336,6 +340,7 @@ describe("soul-bound-authority", () => {
       [Buffer.from("reward-distributor"), stakePool.toBuffer()],
       rewardDistributorProgram.programId
     )[0];
+		console.log("REWARD DISTRIBUTOR", rewardDistributor.toString());
     await rewardDistributorProgram.methods
       .initRewardDistributor({
         rewardAmount: new BN(1), // Amount of rewards received every timestep.

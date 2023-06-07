@@ -42,7 +42,7 @@ program = "./deps/metaplex-program-library/token-metadata/target/deploy/mpl_toke
 # - stake_programmable.rs inside the stake program.
 #
 [[test.genesis]]
-address = "9zNbk2SZKniByFWH8tg3LKqkXy7myRU611SbJJgPt4gd"
+address = "EWbVVjugB3C1jewxFi9wPbvUtUxbU24PErSVe2Tmf6Qu"
 program = "./deps/cardinal-staking/target/deploy/cardinal_reward_distributor.so"
 
 #
@@ -53,7 +53,7 @@ program = "./deps/cardinal-staking/target/deploy/cardinal_reward_distributor.so"
 # - toml below
 #
 [[test.genesis]]
-address = "49DZXCfSbfFRUHUEeeVwtHUrcaPsUGe7K2ke2wuttDim"
+address = "6zdzehBogMiKxMuktMzwog6K22Gn2FF1VRUXn1DfYNTr"
 program = "./deps/cardinal-staking/target/deploy/cardinal_stake_pool.so"
 
 #
