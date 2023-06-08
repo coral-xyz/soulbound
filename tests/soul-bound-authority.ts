@@ -43,6 +43,7 @@ import {
   claimReward,
   readUnclaimedGoldPoints,
   readClaimedGoldPoints,
+  transferRewards,
   CARDINAL_REWARD_DISTRIBUTOR_PROGRAM_ID,
   CARDINAL_STAKE_POOL_PROGRAM_ID,
   AUTHORIZATION_RULES,
@@ -116,7 +117,7 @@ describe("soul-bound-authority", () => {
     const goldMintKeypair = Keypair.generate();
     goldMint = goldMintKeypair.publicKey;
 
-		console.log("ARMANI GOLD MINT", goldMint.toString());
+    console.log("ARMANI GOLD MINT", goldMint.toString());
 
     await token.methods
       .initializeMint(1, program.provider.publicKey, null)
@@ -294,7 +295,7 @@ describe("soul-bound-authority", () => {
       [Buffer.from("identifier")],
       stakePoolProgram.programId
     )[0];
-		console.log("IDENTIFIER", identifier.toString());
+    console.log("IDENTIFIER", identifier.toString());
     await stakePoolProgram.methods
       .initIdentifier()
       .accounts({
@@ -313,7 +314,7 @@ describe("soul-bound-authority", () => {
       ],
       stakePoolProgram.programId
     )[0];
-		console.log("STAKE POOL", stakePool.toString());
+    console.log("STAKE POOL", stakePool.toString());
     await stakePoolProgram.methods
       .initPool({
         overlayText: "Fock it.",
@@ -340,7 +341,7 @@ describe("soul-bound-authority", () => {
       [Buffer.from("reward-distributor"), stakePool.toBuffer()],
       rewardDistributorProgram.programId
     )[0];
-		console.log("REWARD DISTRIBUTOR", rewardDistributor.toString());
+    console.log("REWARD DISTRIBUTOR", rewardDistributor.toString());
     await rewardDistributorProgram.methods
       .initRewardDistributor({
         rewardAmount: new BN(1), // Amount of rewards received every timestep.
@@ -387,45 +388,7 @@ describe("soul-bound-authority", () => {
   });
 
   it("Waits for time to pass to accrue reward", async () => {
-    const unclaimedPointsBefore = await readUnclaimedGoldPoints({
-      user: program.provider.publicKey,
-      nft: nftA,
-      stakePool,
-      rewardDistributor,
-      stakePoolProgram,
-      rewardDistributorProgram,
-    });
-    const claimedPointsBefore = await readClaimedGoldPoints({
-      user: program.provider.publicKey,
-      goldMint,
-      soulboundProgram: program,
-      rewardDistributorProgram,
-    });
-    console.log(
-      "ARMANI BEFORE",
-      unclaimedPointsBefore.toString(),
-      claimedPointsBefore.toString()
-    );
-    await sleep(10 * 1000);
-    const unclaimedPointsAfter = await readUnclaimedGoldPoints({
-      user: program.provider.publicKey,
-      nft: nftA,
-      stakePool,
-      rewardDistributor,
-      stakePoolProgram,
-      rewardDistributorProgram,
-    });
-    const claimedPointsAfter = await readClaimedGoldPoints({
-      user: program.provider.publicKey,
-      goldMint,
-      soulboundProgram: program,
-      rewardDistributorProgram,
-    });
-    console.log(
-      "ARMANI AFTER",
-      unclaimedPointsAfter.toString(),
-      claimedPointsAfter.toString()
-    );
+    await passTime();
   });
 
   it("Claims a reward for nft a", async () => {
@@ -454,6 +417,29 @@ describe("soul-bound-authority", () => {
     });
   });
 
+  it("Waits for time to pass to accrue reward", async () => {
+    await passTime();
+  });
+
+  it("Transfers rewards", async () => {
+    await transferRewards({
+      amount: new BN(6),
+      fromUser: program.provider.publicKey,
+      fromNft: nftA,
+      toNft: nftB,
+      goldMint,
+      stakePool,
+      rewardDistributor,
+      soulboundProgram: program,
+      stakePoolProgram,
+      rewardDistributorProgram,
+    });
+  });
+
+  it("Waits for time to pass to accrue reward", async () => {
+    await passTime();
+  });
+
   it("Unstakes nft A", async () => {
     await unstake({
       user: program.provider.publicKey,
@@ -473,7 +459,11 @@ describe("soul-bound-authority", () => {
   });
 
   it("Waits for time to pass to accrue reward", async () => {
-    const unclaimedPointsBefore = await readUnclaimedGoldPoints({
+    await passTime();
+  });
+
+  const passTime = async () => {
+    const unclaimedPointsBefore_A = await readUnclaimedGoldPoints({
       user: program.provider.publicKey,
       nft: nftA,
       stakePool,
@@ -481,19 +471,40 @@ describe("soul-bound-authority", () => {
       stakePoolProgram,
       rewardDistributorProgram,
     });
-    const claimedPointsBefore = await readClaimedGoldPoints({
+    const claimedPointsBefore_A = await readClaimedGoldPoints({
       user: program.provider.publicKey,
+      nft: nftA,
+      goldMint,
+      soulboundProgram: program,
+      rewardDistributorProgram,
+    });
+    const unclaimedPointsBefore_B = await readUnclaimedGoldPoints({
+      user: program.provider.publicKey,
+      nft: nftB,
+      stakePool,
+      rewardDistributor,
+      stakePoolProgram,
+      rewardDistributorProgram,
+    });
+    const claimedPointsBefore_B = await readClaimedGoldPoints({
+      user: program.provider.publicKey,
+      nft: nftB,
       goldMint,
       soulboundProgram: program,
       rewardDistributorProgram,
     });
     console.log(
-      "ARMANI BEFORE",
-      unclaimedPointsBefore.toString(),
-      claimedPointsBefore.toString()
+      "A BEFORE:",
+      unclaimedPointsBefore_A.toString(),
+      claimedPointsBefore_A.toString()
+    );
+    console.log(
+      "B BEFORE:",
+      unclaimedPointsBefore_B.toString(),
+      claimedPointsBefore_B.toString()
     );
     await sleep(10 * 1000);
-    const unclaimedPointsAfter = await readUnclaimedGoldPoints({
+    const unclaimedPointsAfter_A = await readUnclaimedGoldPoints({
       user: program.provider.publicKey,
       nft: nftA,
       stakePool,
@@ -501,18 +512,39 @@ describe("soul-bound-authority", () => {
       stakePoolProgram,
       rewardDistributorProgram,
     });
-    const claimedPointsAfter = await readClaimedGoldPoints({
+    const claimedPointsAfter_A = await readClaimedGoldPoints({
       user: program.provider.publicKey,
+      nft: nftA,
+      goldMint,
+      soulboundProgram: program,
+      rewardDistributorProgram,
+    });
+    const unclaimedPointsAfter_B = await readUnclaimedGoldPoints({
+      user: program.provider.publicKey,
+      nft: nftB,
+      stakePool,
+      rewardDistributor,
+      stakePoolProgram,
+      rewardDistributorProgram,
+    });
+    const claimedPointsAfter_B = await readClaimedGoldPoints({
+      user: program.provider.publicKey,
+      nft: nftB,
       goldMint,
       soulboundProgram: program,
       rewardDistributorProgram,
     });
     console.log(
-      "ARMANI AFTER",
-      unclaimedPointsAfter.toString(),
-      claimedPointsAfter.toString()
+      "A AFTER:",
+      unclaimedPointsAfter_A.toString(),
+      claimedPointsAfter_A.toString()
     );
-  });
+    console.log(
+      "B AFTER:",
+      unclaimedPointsAfter_B.toString(),
+      claimedPointsAfter_B.toString()
+    );
+  };
 });
 
 export async function createAssociatedTokenAccount(

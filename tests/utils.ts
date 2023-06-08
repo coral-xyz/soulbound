@@ -309,8 +309,9 @@ export async function claimReward({
   );
   const scopedSbaUserAuthority = PublicKey.findProgramAddressSync(
     [
-      Buffer.from("sba-scoped-user-program"),
+      Buffer.from("sba-scoped-user-nft-program"),
       user.toBuffer(),
+      nft.mintAddress.toBuffer(),
       rewardDistributorProgram.programId.toBuffer(),
     ],
     soulboundProgram.programId
@@ -362,10 +363,14 @@ export async function claimReward({
     };
   });
 
+  const nftToken = await getAssociatedTokenAddress(nft.mintAddress, user);
+
   return await soulboundProgram.methods
-    .executeTxScopedUserProgram(data)
+    .executeTxScopedUserNftProgram(data)
     .accounts({
       sbaUser,
+      nftToken,
+      nftMint: nft.mintAddress,
       authority: user,
       delegate: PublicKey.default, // None.
       authorityOrDelegate: user,
@@ -422,6 +427,11 @@ export async function readUnclaimedGoldPoints({
     rewardDistributorProgram,
   });
 
+  // This means the staker unstaked.
+  if (stakeEntryAcc.lastStaker.equals(PublicKey.default)) {
+    return new BN(0);
+  }
+
   const totalStakeSeconds = stakeEntryAcc.totalStakeSeconds.add(
     stakeEntryAcc.amount.eq(new BN(0))
       ? new BN(0)
@@ -444,19 +454,27 @@ export async function readUnclaimedGoldPoints({
 
 export async function readClaimedGoldPoints({
   user,
+  nft,
   goldMint = GOLD_MINT,
   soulboundProgram,
   rewardDistributorProgram,
 }: {
   user: PublicKey;
+  nft: {
+    // Nft to unstake.
+    mintAddress: PublicKey;
+    masterEditionAddress: PublicKey;
+    metadataAddress: PublicKey;
+  };
   goldMint: PublicKey;
   soulboundProgram: Program<SoulBoundAuthority>;
   rewardDistributorProgram: Program<CardinalRewardDistributor>;
 }): Promise<anchor.BN> {
   const scopedSbaUserAuthority = PublicKey.findProgramAddressSync(
     [
-      Buffer.from("sba-scoped-user-program"),
+      Buffer.from("sba-scoped-user-nft-program"),
       user.toBuffer(),
+      nft.mintAddress.toBuffer(),
       rewardDistributorProgram.programId.toBuffer(),
     ],
     soulboundProgram.programId
@@ -480,6 +498,158 @@ export async function readClaimedGoldPoints({
   })();
 
   return claimedAmount;
+}
+
+export async function transferRewards({
+  amount,
+  fromUser, // fromUser should be the client payer/signer.
+  fromNft,
+  toNft,
+  goldMint = GOLD_MINT,
+  stakePool = STAKE_POOL,
+  rewardDistributor = REWARD_DISTRIBUTOR,
+  soulboundProgram,
+  stakePoolProgram,
+  rewardDistributorProgram,
+}: {
+  amount: anchor.BN;
+  fromUser: PublicKey;
+  fromNft: {
+    mintAddress: PublicKey;
+    masterEditionAddress: PublicKey;
+    metadataAddress: PublicKey;
+  };
+  toNft: {
+    mintAddress: PublicKey;
+    masterEditionAddress: PublicKey;
+    metadataAddress: PublicKey;
+  };
+  goldMint: PublicKey;
+  stakePool: PublicKey;
+  rewardDistributor: PublicKey;
+  soulboundProgram: Program<SoulBoundAuthority>;
+  stakePoolProgram: Program<CardinalStakePool>;
+  rewardDistributorProgram: Program<CardinalRewardDistributor>;
+}): Promise<TransactionSignature> {
+  const toUser = fromUser; // Transfers only allowed between same wallet.
+  const [fromSbaUser] = PublicKey.findProgramAddressSync(
+    [Buffer.from("sba-scoped-user"), fromUser.toBuffer()],
+    soulboundProgram.programId
+  );
+  const fromScopedSbaUserAuthority = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("sba-scoped-user-nft-program"),
+      fromUser.toBuffer(),
+      fromNft.mintAddress.toBuffer(),
+      rewardDistributorProgram.programId.toBuffer(),
+    ],
+    soulboundProgram.programId
+  )[0];
+  const fromStakeEntry = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("stake-entry"),
+      stakePool.toBuffer(),
+      fromNft.mintAddress.toBuffer(),
+      getStakeSeed(1, fromUser).toBuffer(),
+    ],
+    stakePoolProgram.programId
+  )[0];
+  const fromRewardEntry = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("reward-entry"),
+      rewardDistributor.toBuffer(),
+      fromStakeEntry.toBuffer(),
+    ],
+    rewardDistributorProgram.programId
+  )[0];
+  const fromScopedSbaUserAuthorityAta = await getAssociatedTokenAddress(
+    goldMint,
+    fromScopedSbaUserAuthority,
+    true
+  );
+
+  const toScopedSbaUserAuthority = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("sba-scoped-user-nft-program"),
+      toUser.toBuffer(),
+      toNft.mintAddress.toBuffer(),
+      rewardDistributorProgram.programId.toBuffer(),
+    ],
+    soulboundProgram.programId
+  )[0];
+  const toStakeEntry = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("stake-entry"),
+      stakePool.toBuffer(),
+      toNft.mintAddress.toBuffer(),
+      getStakeSeed(1, toUser).toBuffer(),
+    ],
+    stakePoolProgram.programId
+  )[0];
+  const toRewardEntry = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("reward-entry"),
+      rewardDistributor.toBuffer(),
+      toStakeEntry.toBuffer(),
+    ],
+    rewardDistributorProgram.programId
+  )[0];
+  const toScopedSbaUserAuthorityAta = await getAssociatedTokenAddress(
+    goldMint,
+    toScopedSbaUserAuthority,
+    true
+  );
+
+  const fromNftToken = await getAssociatedTokenAddress(
+    fromNft.mintAddress,
+    fromUser
+  );
+
+  let { data, keys } = await rewardDistributorProgram.methods
+    .transferRewards(amount)
+    .accounts({
+      rewardEntryA: fromRewardEntry,
+      rewardEntryB: toRewardEntry,
+      stakeEntryA: fromStakeEntry,
+      stakeEntryB: toStakeEntry,
+      rewardDistributor,
+      stakePool,
+      originalMintA: fromNft.mintAddress,
+      originalMintB: toNft.mintAddress,
+      rewardMint: goldMint,
+      userRewardMintTokenAccountA: fromScopedSbaUserAuthorityAta,
+      userRewardMintTokenAccountB: toScopedSbaUserAuthorityAta,
+      authorityA: fromScopedSbaUserAuthority,
+      authorityB: toScopedSbaUserAuthority,
+    })
+    .instruction();
+
+  // Need to set the signer on the PDA to false so that we can serialize
+  // the transaction without error. The CPI in the program will flip this
+  // back to true before signging with PDA seeds.
+  keys = keys.map((k) => {
+    return {
+      ...k,
+      isSigner: k.pubkey.equals(fromScopedSbaUserAuthority)
+        ? false
+        : k.isSigner,
+    };
+  });
+
+  return await soulboundProgram.methods
+    .executeTxScopedUserNftProgram(data)
+    .accounts({
+      sbaUser: fromSbaUser,
+      nftToken: fromNftToken,
+      nftMint: fromNft.mintAddress,
+      authority: fromUser,
+      delegate: PublicKey.default, // None.
+      authorityOrDelegate: fromUser,
+      scopedAuthority: fromScopedSbaUserAuthority,
+      program: rewardDistributorProgram.programId,
+    })
+    .remainingAccounts(keys)
+    .rpc();
 }
 
 // Supply is the token supply of the nft mint.

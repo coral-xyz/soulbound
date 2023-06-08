@@ -11,7 +11,7 @@ pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 // Soul bound authority scoped to a specific program namespace. These
 // authorities should always be the authorities controlling any assets
 // displayed by a given xNFT.
-pub const NS_SBA_SCOPED_USER_PROGRAM: &[u8] = b"sba-scoped-user-program";
+pub const NS_SBA_SCOPED_USER_PROGRAM: &[u8] = b"sba-scoped-user-nft-program";
 
 #[program]
 pub mod soul_bound_authority {
@@ -53,17 +53,19 @@ pub mod soul_bound_authority {
     // CPIs to an opaque, unknown program with a scoped signer--as long as that
     // opaque program is not self-referential.
     //
-    pub fn execute_tx_scoped_user_program(
-        ctx: Context<ExecuteTransactionScopedUserProgram>,
+    pub fn execute_tx_scoped_user_nft_program(
+        ctx: Context<ExecuteTransactionScopedUserNftProgram>,
         data: Vec<u8>,
     ) -> Result<()> {
         let bump = *ctx.bumps.get("scoped_authority").unwrap();
         let sba = ctx.accounts.sba_user.key();
         let program = ctx.accounts.program.key();
+        let nft_mint = ctx.accounts.nft_mint.key();
         let authority_key = ctx.accounts.authority.key();
         let seeds = &[
             NS_SBA_SCOPED_USER_PROGRAM,
             authority_key.as_ref(),
+            nft_mint.as_ref(),
             program.as_ref(),
             &[bump],
         ];
@@ -145,12 +147,16 @@ pub struct RevokeDelegate<'info> {
 // Note: either the delegate or the authority has to sign.
 //
 #[derive(Accounts)]
-pub struct ExecuteTransactionScopedUserProgram<'info> {
+pub struct ExecuteTransactionScopedUserNftProgram<'info> {
     #[account(
         seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
         bump = sba_user.bump,
     )]
     pub sba_user: Account<'info, SoulBoundAuthorityUser>,
+    #[account(constraint = nft_token.owner == authority.key())]
+    pub nft_token: Account<'info, TokenAccount>,
+    #[account(constraint = nft_token.mint == nft_mint.key())]
+    pub nft_mint: Account<'info, Mint>,
     /// CHECK: Checked via constraint.
     #[account(constraint = sba_user.authority == authority.key())]
     pub authority: UncheckedAccount<'info>,
@@ -164,7 +170,12 @@ pub struct ExecuteTransactionScopedUserProgram<'info> {
     pub authority_or_delegate: Signer<'info>,
     /// CHECK: seeds constraint.
     #[account(
-        seeds = [NS_SBA_SCOPED_USER_PROGRAM, authority.key().as_ref(), program.key().as_ref()],
+        seeds = [
+            NS_SBA_SCOPED_USER_PROGRAM,
+            authority.key().as_ref(),
+            nft_mint.key().as_ref(),
+            program.key().as_ref(),
+        ],
         bump,
     )]
     pub scoped_authority: UncheckedAccount<'info>,
