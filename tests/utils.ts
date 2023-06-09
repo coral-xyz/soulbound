@@ -512,7 +512,7 @@ export async function transferRewards({
   stakePoolProgram,
   rewardDistributorProgram,
 }: {
-  amount: anchor.BN;
+  amount?: anchor.BN;
   fromUser: PublicKey;
   fromNft: {
     mintAddress: PublicKey;
@@ -606,7 +606,7 @@ export async function transferRewards({
   );
 
   let { data, keys } = await rewardDistributorProgram.methods
-    .transferRewards(amount)
+    .transferRewards(amount ?? null)
     .accounts({
       rewardEntryA: fromRewardEntry,
       rewardEntryB: toRewardEntry,
@@ -617,6 +617,7 @@ export async function transferRewards({
       originalMintA: fromNft.mintAddress,
       originalMintB: toNft.mintAddress,
       rewardMint: goldMint,
+      user: fromUser,
       userRewardMintTokenAccountA: fromScopedSbaUserAuthorityAta,
       userRewardMintTokenAccountB: toScopedSbaUserAuthorityAta,
       authorityA: fromScopedSbaUserAuthority,
