@@ -423,6 +423,7 @@ describe("soul-bound-authority", () => {
 
   it("Transfers rewards", async () => {
     await transferRewards({
+			amount: null,
       fromUser: program.provider.publicKey,
       fromNft: nftA,
       toNft: nftB,
