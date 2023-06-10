@@ -26,24 +26,24 @@ const BN = anchor.BN;
 // Mainnet constants.
 //
 const STAKE_POOL = new PublicKey(
-  "HGWDdk6LdLcW9feC9RAie4zj5jv8SCkTBqQqm8P6cfbJ"
+  "7xmGGtuNNvjKLDwbYWBYGPpAjRqftJnrTyzSRK92yku8"
 );
 const STAKE_POOL_IDENTIFIER = new PublicKey(
-  "5oN6LE8i499YJ8SNwyB9wfP2SET9AgRV297ascLkL1iy"
+  "E43L3VCJcDqN4pPhhPBiQjSr5A9cBJreTdMDVhWxXVCZ"
 );
 const REWARD_DISTRIBUTOR = new PublicKey(
-  "3cmtf6GZNgXU1KiVV51BEWARcNTMRZcJj5jQUT8GBEr8"
+  "6DBnpqRm1szSz25dD1aWEmYzgGoMB59Y1GMv2gtWUSM4"
 );
-const GOLD_MINT = new PublicKey("E8dDETfxy1bCHtdTDo5djFm1an44vWBV1ocH5bPnw9NC");
+const GOLD_MINT = new PublicKey("5QPAPkBvd2B7RQ6DBGvCxGdAcyWitdvRAP58CdvBiuf7");
 
 //
 // If these program ids ever change, make sure to change the Anchor.toml.
 //
 export const CARDINAL_REWARD_DISTRIBUTOR_PROGRAM_ID = new PublicKey(
-  "EWbVVjugB3C1jewxFi9wPbvUtUxbU24PErSVe2Tmf6Qu"
+  "H2yQahQ7eQH8HXXPtJSJn8MURRFEWVesTd8PsracXp1S"
 );
 export const CARDINAL_STAKE_POOL_PROGRAM_ID = new PublicKey(
-  "6zdzehBogMiKxMuktMzwog6K22Gn2FF1VRUXn1DfYNTr"
+  "2gvBmibwtBnbkLExmgsijKy6hGXJneou8X6hkyWQvYnF"
 );
 export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
