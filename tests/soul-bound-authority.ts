@@ -1,4 +1,4 @@
-Import * as anchor from "@project-serum/anchor";
+import * as anchor from "@project-serum/anchor";
 import { Program, Spl } from "@project-serum/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
