@@ -120,7 +120,7 @@ describe("soul-bound-authority", () => {
     console.log("ARMANI GOLD MINT", goldMint.toString());
 
     await token.methods
-      .initializeMint(1, program.provider.publicKey, null)
+      .initializeMint(0, program.provider.publicKey, null)
       .accounts({
         mint: goldMint,
       })
