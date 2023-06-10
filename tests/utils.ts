@@ -63,8 +63,7 @@ export const AUTHORIZATION_RULES = new PublicKey(
 // If this changes, we need to change it in the cardinal-reward-distributor
 // state.rs file.
 //
-export const ARMANI_AUTHORITY = new PublicKey(
-  //  "F74rNS2dQmsCbVeW5iNgFUSWtdAPxJvJxwbrhieTyHLd"
+export const BACKPACK_AUTHORITY = new PublicKey(
   "EcxjN4mea6Ah9WSqZhLtSJJCZcxY73Vaz6UVHFZZ5Ttz"
 );
 

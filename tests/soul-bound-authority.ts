@@ -1,4 +1,4 @@
-import * as anchor from "@project-serum/anchor";
+Import * as anchor from "@project-serum/anchor";
 import { Program, Spl } from "@project-serum/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -47,7 +47,7 @@ import {
   CARDINAL_REWARD_DISTRIBUTOR_PROGRAM_ID,
   CARDINAL_STAKE_POOL_PROGRAM_ID,
   AUTHORIZATION_RULES,
-  ARMANI_AUTHORITY,
+  BACKPACK_AUTHORITY,
 } from "./utils";
 
 const BN = anchor.BN;
@@ -357,7 +357,7 @@ describe("soul-bound-authority", () => {
         rewardDistributor,
         stakePool,
         rewardMint: goldMint,
-        authority: ARMANI_AUTHORITY,
+        authority: BACKPACK_AUTHORITY,
         payer: program.provider.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
