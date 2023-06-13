@@ -3,13 +3,6 @@ seeds = true
 skip-lint = false
 
 #
-# Gold: E8dDETfxy1bCHtdTDo5djFm1an44vWBV1ocH5bPnw9NC
-# Identifier: 5oN6LE8i499YJ8SNwyB9wfP2SET9AgRV297ascLkL1iy
-# Stake pool: HGWDdk6LdLcW9feC9RAie4zj5jv8SCkTBqQqm8P6cfbJ
-# Reward distributor: 3cmtf6GZNgXU1KiVV51BEWARcNTMRZcJj5jQUT8GBEr8
-#
-
-#
 # Need to sync this in many files
 #
 # - here
