@@ -29,9 +29,7 @@ import {
 
 const BN = anchor.BN;
 
-
 export function createStakeApi(PROVIDER: any) {
-
   //
   // Mainnet stake constants.
   //
@@ -39,12 +37,14 @@ export function createStakeApi(PROVIDER: any) {
     "7xmGGtuNNvjKLDwbYWBYGPpAjRqftJnrTyzSRK92yku8"
   );
   //const STAKE_POOL_IDENTIFIER = new PublicKey(
-    //"E43L3VCJcDqN4pPhhPBiQjSr5A9cBJreTdMDVhWxXVCZ"
+  //"E43L3VCJcDqN4pPhhPBiQjSr5A9cBJreTdMDVhWxXVCZ"
   //);
   const REWARD_DISTRIBUTOR = new PublicKey(
     "6DBnpqRm1szSz25dD1aWEmYzgGoMB59Y1GMv2gtWUSM4"
   );
-  const GOLD_MINT = new PublicKey("5QPAPkBvd2B7RQ6DBGvCxGdAcyWitdvRAP58CdvBiuf7");
+  const GOLD_MINT = new PublicKey(
+    "5QPAPkBvd2B7RQ6DBGvCxGdAcyWitdvRAP58CdvBiuf7"
+  );
 
   //
   // Program ids.
@@ -253,7 +253,9 @@ export function createStakeApi(PROVIDER: any) {
       )
       .transaction();
     // @ts-ignore
-    return await window.xnft.solana.send(tx, undefined, { skipPreflight: true });
+    return await window.xnft.solana.send(tx, undefined, {
+      skipPreflight: true,
+    });
   }
 
   async function isStaked({
@@ -301,11 +303,11 @@ export function createStakeApi(PROVIDER: any) {
     stakePoolProgram?: Program<CardinalStakePool>;
   }) => {
     const stakeEntry = await stakeEntryAddress({
-			user,
-			nft,
-			stakePool,
-			stakePoolProgram,
-		});
+      user,
+      nft,
+      stakePool,
+      stakePoolProgram,
+    });
     return await stakePoolProgram.account.stakeEntry.fetch(stakeEntry);
   };
 
@@ -333,7 +335,7 @@ export function createStakeApi(PROVIDER: any) {
       ],
       stakePoolProgram.programId
     )[0];
-		return stakeEntry;
+    return stakeEntry;
   };
 
   const fetchRewardEntry = async ({
@@ -396,12 +398,12 @@ export function createStakeApi(PROVIDER: any) {
     stakePoolProgram?: Program<CardinalStakePool>;
     rewardDistributorProgram?: Program<CardinalRewardDistributor>;
   }) => {
-		const stakeEntry = await stakeEntryAddress({
-			user,
-			nft,
-			stakePool,
-			stakePoolProgram,
-		});
+    const stakeEntry = await stakeEntryAddress({
+      user,
+      nft,
+      stakePool,
+      stakePoolProgram,
+    });
     const rewardEntry = PublicKey.findProgramAddressSync(
       [
         Buffer.from("reward-entry"),
@@ -410,7 +412,7 @@ export function createStakeApi(PROVIDER: any) {
       ],
       rewardDistributorProgram.programId
     )[0];
-		return rewardEntry;
+    return rewardEntry;
   };
 
   async function claimRewardInstruction({
@@ -583,7 +585,7 @@ export function createStakeApi(PROVIDER: any) {
     soulboundProgram = SOUL_BOUND_PROGRAM,
     stakePoolProgram = STAKE_POOL_PROGRAM,
     rewardDistributorProgram = REWARD_DISTRIBUTOR_PROGRAM,
-		accounts,
+    accounts,
   }: {
     user: PublicKey;
     nft: {
@@ -597,7 +599,7 @@ export function createStakeApi(PROVIDER: any) {
     rewardDistributor?: PublicKey;
     stakePoolProgram?: Program<CardinalStakePool>;
     rewardDistributorProgram?: Program<CardinalRewardDistributor>;
-		accounts?: any,
+    accounts?: any;
   }): Promise<number> {
     const unclaimed = await (async () => {
       try {
@@ -608,7 +610,7 @@ export function createStakeApi(PROVIDER: any) {
           rewardDistributor,
           stakePoolProgram,
           rewardDistributorProgram,
-					accounts,
+          accounts,
         });
       } catch {
         return new BN(0);
@@ -622,7 +624,7 @@ export function createStakeApi(PROVIDER: any) {
           goldMint,
           soulboundProgram,
           rewardDistributorProgram,
-					accounts,
+          accounts,
         });
       } catch {
         return new BN(0);
@@ -644,7 +646,7 @@ export function createStakeApi(PROVIDER: any) {
     rewardDistributor = REWARD_DISTRIBUTOR,
     stakePoolProgram = STAKE_POOL_PROGRAM,
     rewardDistributorProgram = REWARD_DISTRIBUTOR_PROGRAM,
-		accounts,
+    accounts,
   }: {
     user: PublicKey;
     nft: {
@@ -656,27 +658,31 @@ export function createStakeApi(PROVIDER: any) {
     rewardDistributor?: PublicKey;
     stakePoolProgram?: Program<CardinalStakePool>;
     rewardDistributorProgram?: Program<CardinalRewardDistributor>;
-		accounts?: {
-			stakeEntry: any,
-			rewardEntry: any,
-			rewardDistributor: any,
-			goldTokenAccount: any,
-		};
+    accounts?: {
+      stakeEntry: any;
+      rewardEntry: any;
+      rewardDistributor: any;
+      goldTokenAccount: any;
+    };
   }): Promise<anchor.BN> {
-    const stakeEntryAcc = accounts ? accounts.stakeEntry : await fetchStakeEntry({
-      user,
-      nft,
-      stakePool,
-      stakePoolProgram,
-    });
-    const rewardEntryAcc = accounts ? accounts.rewardEntry : await fetchRewardEntry({
-      user,
-      nft: nft,
-      stakePool,
-      rewardDistributor,
-      stakePoolProgram,
-      rewardDistributorProgram,
-    });
+    const stakeEntryAcc = accounts
+      ? accounts.stakeEntry
+      : await fetchStakeEntry({
+          user,
+          nft,
+          stakePool,
+          stakePoolProgram,
+        });
+    const rewardEntryAcc = accounts
+      ? accounts.rewardEntry
+      : await fetchRewardEntry({
+          user,
+          nft: nft,
+          stakePool,
+          rewardDistributor,
+          stakePoolProgram,
+          rewardDistributorProgram,
+        });
 
     // This means the staker unstaked.
     if (stakeEntryAcc.lastStaker.equals(PublicKey.default)) {
@@ -689,13 +695,16 @@ export function createStakeApi(PROVIDER: any) {
     const totalStakeSeconds = stakeEntryAcc.totalStakeSeconds.add(
       stakeEntryAcc.amount.eq(new BN(0))
         ? new BN(0)
-        : new BN(Date.now() / 1000).sub(stakeEntryAcc.lastUpdatedAt as anchor.BN)
+        : new BN(Date.now() / 1000).sub(
+            stakeEntryAcc.lastUpdatedAt as anchor.BN
+          )
     );
     const rewardSecondsReceived = rewardEntryAcc.rewardSecondsReceived;
-    const rewardDistributorAcc =
-      accounts ? accounts.rewardDistributor : await rewardDistributorProgram.account.rewardDistributor.fetch(
-        rewardDistributor
-      );
+    const rewardDistributorAcc = accounts
+      ? accounts.rewardDistributor
+      : await rewardDistributorProgram.account.rewardDistributor.fetch(
+          rewardDistributor
+        );
     const rewardAmountToReceive = totalStakeSeconds
       .sub(rewardSecondsReceived)
       .div(rewardDistributorAcc.rewardDurationSeconds)
@@ -714,7 +723,7 @@ export function createStakeApi(PROVIDER: any) {
     goldMint = GOLD_MINT,
     soulboundProgram = SOUL_BOUND_PROGRAM,
     rewardDistributorProgram = REWARD_DISTRIBUTOR_PROGRAM,
-		accounts,
+    accounts,
   }: {
     user: PublicKey;
     nft: {
@@ -725,26 +734,28 @@ export function createStakeApi(PROVIDER: any) {
     goldMint?: PublicKey;
     soulboundProgram?: Program<SoulBoundAuthority>;
     rewardDistributorProgram?: Program<CardinalRewardDistributor>;
-		accounts?: {
-			stakeEntry: any,
-			rewardEntry: any,
-			goldTokenAccount: any,
-		};
+    accounts?: {
+      stakeEntry: any;
+      rewardEntry: any;
+      goldTokenAccount: any;
+    };
   }): Promise<anchor.BN> {
-		const userRewardMintTokenAccount = await goldPointsAddress({
-			user,
-			nft,
-			goldMint,
-			soulboundProgram,
-			rewardDistributorProgram,
-		});
+    const userRewardMintTokenAccount = await goldPointsAddress({
+      user,
+      nft,
+      goldMint,
+      soulboundProgram,
+      rewardDistributorProgram,
+    });
 
     const claimedAmount = await (async () => {
       try {
-        const rewardTokenAccount = accounts ? accounts.goldTokenAccount : await getAccount(
-          soulboundProgram.provider.connection,
-          userRewardMintTokenAccount
-        );
+        const rewardTokenAccount = accounts
+          ? accounts.goldTokenAccount
+          : await getAccount(
+              soulboundProgram.provider.connection,
+              userRewardMintTokenAccount
+            );
         return new BN(rewardTokenAccount.amount.toString());
       } catch {
         return new BN(0);
@@ -786,7 +797,7 @@ export function createStakeApi(PROVIDER: any) {
       true
     );
 
-		return userRewardMintTokenAccount;
+    return userRewardMintTokenAccount;
   }
 
   async function transferRewards({
@@ -958,19 +969,19 @@ export function createStakeApi(PROVIDER: any) {
     isStaked,
     isSoulBoundAuthorityUserInitialized,
     readGoldPoints,
-		readUnclaimedGoldPoints,
-		readClaimedGoldPoints,
+    readUnclaimedGoldPoints,
+    readClaimedGoldPoints,
     transferRewards,
-		anchor: {
-			soulbound: SOUL_BOUND_PROGRAM,
-			rewardDistributor: REWARD_DISTRIBUTOR_PROGRAM,
-			stakePool: STAKE_POOL_PROGRAM,
-		},
-		constants: {
-			REWARD_DISTRIBUTOR,
-		},
-		rewardEntryAddress,
-		stakeEntryAddress,
-		goldPointsAddress,
-  }
+    anchor: {
+      soulbound: SOUL_BOUND_PROGRAM,
+      rewardDistributor: REWARD_DISTRIBUTOR_PROGRAM,
+      stakePool: STAKE_POOL_PROGRAM,
+    },
+    constants: {
+      REWARD_DISTRIBUTOR,
+    },
+    rewardEntryAddress,
+    stakeEntryAddress,
+    goldPointsAddress,
+  };
 }
