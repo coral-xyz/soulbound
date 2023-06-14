@@ -243,7 +243,7 @@ pub struct ExecuteTransactionScopedUserXnft<'info> {
         seeds = [
             NS_SBA_SCOPED_USER_XNFT,
             authority.key().as_ref(),
-						xnft.key().as_ref(),
+            xnft.key().as_ref(),
         ],
         bump,
     )]
