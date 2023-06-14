@@ -423,7 +423,7 @@ describe("soul-bound-authority", () => {
 
   it("Transfers rewards", async () => {
     await transferRewards({
-			amount: null,
+      amount: null,
       fromUser: program.provider.publicKey,
       fromNft: nftA,
       toNft: nftB,
@@ -545,6 +545,55 @@ describe("soul-bound-authority", () => {
       claimedPointsAfter_B.toString()
     );
   };
+
+  //
+  // This is just a test on the solana runtime for my own understanding.
+  //
+  it("expects the runtime to error when trying to change singing priviledges", async () => {
+    const testAProgram = anchor.workspace.TestA;
+    const testBProgram = anchor.workspace.TestB;
+
+    const ix2 = await testBProgram.methods
+      .test()
+      .accounts({
+        authority: program.provider.publicKey,
+      })
+      .instruction();
+
+    const ix1 = await testAProgram.methods
+      .test()
+      .accounts({
+        authority: program.provider.publicKey,
+        program: testBProgram.programId,
+      })
+      .instruction();
+
+    const remainingAccounts = ix1.keys.concat(ix2.keys);
+
+    const scopedXnftAuthority = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("sba-scoped-user-xnft"),
+        program.provider.publicKey.toBuffer(),
+        program.provider.publicKey.toBuffer(),
+      ],
+      program.programId
+    )[0];
+    try {
+      await program.methods
+        .executeTxScopedUserXnft(ix1.data)
+        .accounts({
+          authority: program.provider.publicKey,
+          xnft: program.provider.publicKey,
+          scopedXnftAuthority,
+          program: testAProgram.programId,
+        })
+        .remainingAccounts(remainingAccounts)
+        .rpc({ skipPreflight: true });
+      assert.ok(false);
+    } catch {
+      // Success.
+    }
+  });
 });
 
 export async function createAssociatedTokenAccount(

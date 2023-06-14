@@ -11,6 +11,8 @@ skip-lint = false
 #
 [programs.localnet]
 soul_bound_authority = "7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS"
+test_a = "22ZdNtpGW6WzgrCaq2g1fCyRLYXVdF1rQFnHXfDhnkKE"
+test_b = "Ag7uZu5YsGu2hwz8yn8vXhi4k1yV7pLZEnDh763h97uu"
 
 [programs.mainnet]
 soul_bound_authority = "7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS"
