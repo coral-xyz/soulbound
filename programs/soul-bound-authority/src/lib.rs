@@ -13,6 +13,9 @@ pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 // displayed by a given xNFT.
 pub const NS_SBA_SCOPED_USER_PROGRAM: &[u8] = b"sba-scoped-user-nft-program";
 
+// Soul bound authority scoped to an xnft.
+pub const NS_SBA_SCOPED_USER_XNFT: &[u8] = b"sba-scoped-user-xnft";
+
 #[program]
 pub mod soul_bound_authority {
     use super::*;
@@ -84,6 +87,51 @@ pub mod soul_bound_authority {
                         true
                     } else {
                         a.is_signer
+                    },
+                    is_writable: a.is_writable,
+                })
+                .collect(),
+        };
+        let accounts = ctx.remaining_accounts;
+        solana_program::program::invoke_signed(&ix, accounts, signer)?;
+        Ok(())
+    }
+
+    pub fn execute_tx_scoped_user_xnft(
+        ctx: Context<ExecuteTransactionScopedUserXnft>,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        let authority = ctx.accounts.authority.to_account_info();
+        let bump = *ctx.bumps.get("scoped_xnft_authority").unwrap();
+        let scoped_xnft_authority = ctx.accounts.scoped_xnft_authority.key();
+        let authority = ctx.accounts.authority.key();
+        let xnft = ctx.accounts.xnft.key();
+
+        //
+        // Sign with the user-xnft scoped PDA.
+        //
+        let seeds = &[
+            NS_SBA_SCOPED_USER_XNFT,
+            authority.as_ref(),
+            xnft.as_ref(),
+            &[bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        let ix = Instruction {
+            program_id: ctx.accounts.program.key(),
+            data,
+            accounts: ctx
+                .remaining_accounts
+                .into_iter()
+                .map(|a| AccountMeta {
+                    pubkey: a.key(),
+                    is_signer: if a.key() == scoped_xnft_authority {
+                        true // PDA is always a signer.
+                    } else if a.key() == authority.key() {
+                        false // User wallet is never a signer.
+                    } else {
+                        a.is_signer // Pass through.
                     },
                     is_writable: a.is_writable,
                 })
@@ -184,6 +232,27 @@ pub struct ExecuteTransactionScopedUserNftProgram<'info> {
     pub program: UncheckedAccount<'info>,
 }
 
+#[derive(Accounts)]
+pub struct ExecuteTransactionScopedUserXnft<'info> {
+    pub authority: Signer<'info>,
+    /// CHECK: don't technically need to check this since the safety of this
+    ///        requires wallet coordination.
+    pub xnft: UncheckedAccount<'info>,
+    /// CHECK: seeds constraint.
+    #[account(
+        seeds = [
+            NS_SBA_SCOPED_USER_XNFT,
+            authority.key().as_ref(),
+						xnft.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub scoped_xnft_authority: UncheckedAccount<'info>,
+    /// CHECK: free CPI; no state accessed as long as not re-entrant.
+    #[account(constraint = program.key() != ID)]
+    pub program: UncheckedAccount<'info>,
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Accounts.
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,5 +277,5 @@ impl SoulBoundAuthorityUser {
 
 #[error_code]
 pub enum ErrorCode {
-    Todo,
+    InvalidAuthorityAccess,
 }
