@@ -573,15 +573,23 @@ describe("soul-bound-authority", () => {
     const scopedXnftAuthority = PublicKey.findProgramAddressSync(
       [
         Buffer.from("sba-scoped-user-xnft"),
-        program.provider.publicKey.toBuffer(),
+        nftA.mintAddress.toBuffer(),
         program.provider.publicKey.toBuffer(),
       ],
       program.programId
     )[0];
+
+    const ata = await getAssociatedTokenAddress(
+      nftA.mintAddress,
+      program.provider.publicKey
+    );
+
     try {
       await program.methods
         .executeTxScopedUserXnft(ix1.data)
         .accounts({
+          nftMint: nftA.mintAddress,
+          nftToken: ata,
           authority: program.provider.publicKey,
           xnft: program.provider.publicKey,
           scopedXnftAuthority,

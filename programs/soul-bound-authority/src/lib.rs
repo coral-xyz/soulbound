@@ -14,7 +14,7 @@ pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 pub const NS_SBA_SCOPED_USER_PROGRAM: &[u8] = b"sba-scoped-user-nft-program";
 
 // Soul bound authority scoped to an xnft.
-pub const NS_SBA_SCOPED_USER_XNFT: &[u8] = b"sba-scoped-user-xnft";
+pub const NS_SBA_SCOPED_NFT_XNFT: &[u8] = b"sba-scoped-nft-xnft";
 
 #[program]
 pub mod soul_bound_authority {
@@ -98,9 +98,10 @@ pub mod soul_bound_authority {
     }
 
     pub fn execute_tx_scoped_user_xnft(
-        ctx: Context<ExecuteTransactionScopedUserXnft>,
+        ctx: Context<ExecuteTransactionScopedNftXnft>,
         data: Vec<u8>,
     ) -> Result<()> {
+        let nft_mint = ctx.accounts.nft_mint.key();
         let authority = ctx.accounts.authority.to_account_info();
         let bump = *ctx.bumps.get("scoped_xnft_authority").unwrap();
         let scoped_xnft_authority = ctx.accounts.scoped_xnft_authority.key();
@@ -111,8 +112,8 @@ pub mod soul_bound_authority {
         // Sign with the user-xnft scoped PDA.
         //
         let seeds = &[
-            NS_SBA_SCOPED_USER_XNFT,
-            authority.as_ref(),
+            NS_SBA_SCOPED_NFT_XNFT,
+            nft_mint.as_ref(),
             xnft.as_ref(),
             &[bump],
         ];
@@ -233,7 +234,12 @@ pub struct ExecuteTransactionScopedUserNftProgram<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ExecuteTransactionScopedUserXnft<'info> {
+pub struct ExecuteTransactionScopedNftXnft<'info> {
+    #[account(constraint = nft_mint.key() == nft_token.mint)]
+    pub nft_mint: Account<'info, Mint>,
+    #[account(constraint = nft_token.owner == authority.key())]
+    pub nft_token: Account<'info, TokenAccount>,
+
     pub authority: Signer<'info>,
     /// CHECK: don't technically need to check this since the safety of this
     ///        requires wallet coordination.
@@ -241,8 +247,8 @@ pub struct ExecuteTransactionScopedUserXnft<'info> {
     /// CHECK: seeds constraint.
     #[account(
         seeds = [
-            NS_SBA_SCOPED_USER_XNFT,
-            authority.key().as_ref(),
+            NS_SBA_SCOPED_NFT_XNFT,
+            nft_mint.key().as_ref(),
             xnft.key().as_ref(),
         ],
         bump,
