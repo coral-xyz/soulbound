@@ -6,7 +6,7 @@ import {
   TransactionSignature,
   TransactionInstruction,
   ComputeBudgetProgram,
-	Transaction,
+  Transaction,
   SYSVAR_INSTRUCTIONS_PUBKEY,
 } from "@solana/web3.js";
 import {
@@ -109,25 +109,25 @@ export function createStakeApi(PROVIDER: any) {
     stakePoolProgram?: Program<CardinalStakePool>;
     rewardDistributorProgram?: Program<CardinalRewardDistributor>;
   }): Promise<TransactionSignature> {
-		const tx = new Transaction();
-		tx.add(
+    const tx = new Transaction();
+    tx.add(
       ComputeBudgetProgram.setComputeUnitLimit({
         units: 1000000,
-      }),
-    )
-		tx.add(
-			await stakeInstruction({
-				user,
-				nft,
-				stakePool,
-				rewardDistributor,
-				stakePoolProgram,
-				rewardDistributorProgram,
-			})
-		);
+      })
+    );
+    tx.add(
+      await stakeInstruction({
+        user,
+        nft,
+        stakePool,
+        rewardDistributor,
+        stakePoolProgram,
+        rewardDistributorProgram,
+      })
+    );
     // @ts-ignore
     return await window.xnft.solana.send(tx);
-	}
+  }
 
   async function stakeInstruction({
     user,
@@ -187,7 +187,7 @@ export function createStakeApi(PROVIDER: any) {
       ],
       TOKEN_METADATA_PROGRAM_ID
     )[0];
-		return await stakePoolProgram.methods
+    return await stakePoolProgram.methods
       .stakeProgrammable(new BN(1))
       .accounts({
         stakeEntry,
