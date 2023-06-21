@@ -1,12 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-//import { Buffer } from "buffer";
 import {
   PublicKey,
   SystemProgram,
   TransactionSignature,
   TransactionInstruction,
   ComputeBudgetProgram,
+	Transaction,
   SYSVAR_INSTRUCTIONS_PUBKEY,
 } from "@solana/web3.js";
 import {
@@ -109,6 +109,44 @@ export function createStakeApi(PROVIDER: any) {
     stakePoolProgram?: Program<CardinalStakePool>;
     rewardDistributorProgram?: Program<CardinalRewardDistributor>;
   }): Promise<TransactionSignature> {
+		const tx = new Transaction();
+		tx.add(
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: 1000000,
+      }),
+    )
+		tx.add(
+			await stakeInstruction({
+				user,
+				nft,
+				stakePool,
+				rewardDistributor,
+				stakePoolProgram,
+				rewardDistributorProgram,
+			})
+		);
+    // @ts-ignore
+    return await window.xnft.solana.send(tx);
+	}
+
+  async function stakeInstruction({
+    user,
+    nft,
+    stakePool = STAKE_POOL,
+    rewardDistributor = REWARD_DISTRIBUTOR,
+    stakePoolProgram = STAKE_POOL_PROGRAM,
+    rewardDistributorProgram = REWARD_DISTRIBUTOR_PROGRAM,
+  }: {
+    user: PublicKey;
+    nft: {
+      mintAddress: PublicKey;
+      metadataAddress: PublicKey;
+    };
+    stakePool?: PublicKey;
+    rewardDistributor?: PublicKey;
+    stakePoolProgram?: Program<CardinalStakePool>;
+    rewardDistributorProgram?: Program<CardinalRewardDistributor>;
+  }): Promise<TransactionInstruction> {
     const stakeEntry = PublicKey.findProgramAddressSync(
       [
         Buffer.from("stake-entry"),
@@ -149,7 +187,7 @@ export function createStakeApi(PROVIDER: any) {
       ],
       TOKEN_METADATA_PROGRAM_ID
     )[0];
-    const tx = await stakePoolProgram.methods
+		return await stakePoolProgram.methods
       .stakeProgrammable(new BN(1))
       .accounts({
         stakeEntry,
@@ -170,14 +208,7 @@ export function createStakeApi(PROVIDER: any) {
         rewardDistributorProgram: rewardDistributorProgram.programId,
         systemProgram: SystemProgram.programId,
       })
-      .preInstructions([
-        ComputeBudgetProgram.setComputeUnitLimit({
-          units: 1000000,
-        }),
-      ])
-      .transaction();
-    // @ts-ignore
-    return await window.xnft.solana.send(tx);
+      .instruction();
   }
 
   async function unstake({
