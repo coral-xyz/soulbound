@@ -1046,6 +1046,8 @@ export function createStakeApi(PROVIDER: any) {
     stake,
     stakeInstruction,
     unstake,
+		unstakeInstruction,
+		claimAndUnstakeInstructions,
     isStaked,
     isSoulBoundAuthorityUserInitialized,
     readGoldPoints,
