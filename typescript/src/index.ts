@@ -216,6 +216,7 @@ export function createStakeApi(PROVIDER: any) {
     nft,
     stakePool = STAKE_POOL,
     stakePoolProgram = STAKE_POOL_PROGRAM,
+		options,
   }: {
     user: PublicKey; // User's wallet address.
     nft: {
@@ -225,7 +226,64 @@ export function createStakeApi(PROVIDER: any) {
     };
     stakePool?: PublicKey;
     stakePoolProgram?: Program<CardinalStakePool>;
+		options?: any;
   }): Promise<TransactionSignature> {
+		const tx = new Transaction();
+		tx.add(
+      ...(await claimAndUnstakeInstructions({
+				user,
+				nft,
+				stakePool,
+				stakePoolProgram,
+			}))
+		);
+    // @ts-ignore
+    return await window.xnft.solana.send(tx, undefined, options);
+	}
+  async function claimAndUnstakeInstructions({
+    user,
+    nft,
+    stakePool = STAKE_POOL,
+    stakePoolProgram = STAKE_POOL_PROGRAM,
+  }: {
+    user: PublicKey; // User's wallet address.
+    nft: {
+      // Nft to unstake.
+      mintAddress: PublicKey;
+      metadataAddress: PublicKey;
+    };
+    stakePool?: PublicKey;
+    stakePoolProgram?: Program<CardinalStakePool>;
+  }): Promise<Array<TransactionInstruction>> {
+		const ixs = await claimRewardInstruction({
+      user,
+      nft,
+    });
+		ixs.push(
+			await unstakeInstruction({
+				user,
+				nft,
+				stakePool,
+				stakePoolProgram,
+			})
+		);
+		return ixs;
+	}
+  async function unstakeInstruction({
+    user,
+    nft,
+    stakePool = STAKE_POOL,
+    stakePoolProgram = STAKE_POOL_PROGRAM,
+  }: {
+    user: PublicKey; // User's wallet address.
+    nft: {
+      // Nft to unstake.
+      mintAddress: PublicKey;
+      metadataAddress: PublicKey;
+    };
+    stakePool?: PublicKey;
+    stakePoolProgram?: Program<CardinalStakePool>;
+  }): Promise<TransactionInstruction> {
     const stakeEntry = PublicKey.findProgramAddressSync(
       [
         Buffer.from("stake-entry"),
@@ -258,7 +316,7 @@ export function createStakeApi(PROVIDER: any) {
       ],
       TOKEN_METADATA_PROGRAM_ID
     )[0];
-    const tx = await stakePoolProgram.methods
+		return await stakePoolProgram.methods
       .unstakeProgrammable()
       .accounts({
         stakeEntry,
@@ -276,17 +334,7 @@ export function createStakeApi(PROVIDER: any) {
         authorizationRulesProgram: AUTHORIZATION_RULES_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
-      .preInstructions(
-        await claimRewardInstruction({
-          user,
-          nft,
-        })
-      )
-      .transaction();
-    // @ts-ignore
-    return await window.xnft.solana.send(tx, undefined, {
-      skipPreflight: true,
-    });
+      .instruction();
   }
 
   async function isStaked({
