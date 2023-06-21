@@ -996,6 +996,7 @@ export function createStakeApi(PROVIDER: any) {
 
   return {
     stake,
+    stakeInstruction,
     unstake,
     isStaked,
     isSoulBoundAuthorityUserInitialized,
