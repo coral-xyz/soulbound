@@ -8,6 +8,9 @@ declare_id!("7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS");
 // Soul bound authority account namespace.
 pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 
+// Soul bound authority scoped to an nft and a program.
+pub const NS_SBA_SCOPED_NFT_PROGRAM: &[u8] = b"sba-scoped-nft-program";
+
 // Soul bound authority scoped to a specific program namespace. These
 // authorities should always be the authorities controlling any assets
 // displayed by a given xNFT.
@@ -51,6 +54,48 @@ pub mod soul_bound_authority {
     ////////////////////////////////////////////////////////////////////////////
     // Opaque CPI Proxy.
     ////////////////////////////////////////////////////////////////////////////
+
+    //
+    // CPIs to an opaque, unknown program with a scoped signer--as long as that
+    // opaque program is not self-referential.
+    //
+    pub fn execute_tx_scoped_nft_program(
+        ctx: Context<ExecuteTransactionScopedUserNftProgram>,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        let bump = *ctx.bumps.get("scoped_authority").unwrap();
+        let program = ctx.accounts.program.key();
+        let nft_mint = ctx.accounts.nft_mint.key();
+        let seeds = &[
+            NS_SBA_SCOPED_NFT_PROGRAM,
+            nft_mint.as_ref(),
+            program.as_ref(),
+            &[bump],
+        ];
+        let signer = &[&seeds[..]];
+        let signer_pubkey = Pubkey::create_program_address(seeds, &ID).unwrap();
+
+        let ix = Instruction {
+            program_id: ctx.accounts.program.key(),
+            data,
+            accounts: ctx
+                .remaining_accounts
+                .into_iter()
+                .map(|a| AccountMeta {
+                    pubkey: a.key(),
+                    is_signer: if signer_pubkey == a.key() {
+                        true
+                    } else {
+                        a.is_signer
+                    },
+                    is_writable: a.is_writable,
+                })
+                .collect(),
+        };
+        let accounts = ctx.remaining_accounts;
+        solana_program::program::invoke_signed(&ix, accounts, signer)?;
+        Ok(())
+    }
 
     //
     // CPIs to an opaque, unknown program with a scoped signer--as long as that
@@ -190,6 +235,34 @@ pub struct RevokeDelegate<'info> {
     )]
     pub sba: Account<'info, SoulBoundAuthorityUser>,
     pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ExecuteTransactionScopedNftProgram<'info> {
+    #[account(
+        seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
+        bump = sba_user.bump,
+    )]
+    pub sba_user: Account<'info, SoulBoundAuthorityUser>,
+    #[account(constraint = nft_token.owner == authority.key())]
+    pub nft_token: Account<'info, TokenAccount>,
+    #[account(constraint = nft_token.mint == nft_mint.key())]
+    pub nft_mint: Account<'info, Mint>,
+    #[account(constraint = sba_user.authority == authority.key())]
+    pub authority: Signer<'info>,
+    /// CHECK: seeds constraint.
+    #[account(
+        seeds = [
+            NS_SBA_SCOPED_NFT_PROGRAM,
+            nft_mint.key().as_ref(),
+            program.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub scoped_authority: UncheckedAccount<'info>,
+    /// CHECK: free CPI; no state accessed as long as not re-entrant.
+    #[account(constraint = program.key() != ID)]
+    pub program: UncheckedAccount<'info>,
 }
 
 //
