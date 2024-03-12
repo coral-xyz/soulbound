@@ -60,7 +60,7 @@ pub mod soul_bound_authority {
     // opaque program is not self-referential.
     //
     pub fn execute_tx_scoped_nft_program(
-        ctx: Context<ExecuteTransactionScopedUserNftProgram>,
+        ctx: Context<ExecuteTransactionScopedNftProgram>,
         data: Vec<u8>,
     ) -> Result<()> {
         let bump = *ctx.bumps.get("scoped_authority").unwrap();
