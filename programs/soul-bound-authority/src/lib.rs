@@ -97,6 +97,49 @@ pub mod soul_bound_authority {
         Ok(())
     }
 
+    // We allow the re-use of the `execute_tx_scoped_nft_program` authority
+    // to the token program only.
+    //
+    // This is used so that, if the PDA used there owns token assets,
+    // we can interact with them.
+    pub fn execute_tx_scoped_nft_program_token(
+        ctx: Context<ExecuteTransactionScopedNftProgramToken>,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        let bump = *ctx.bumps.get("scoped_authority").unwrap();
+        let program = ctx.accounts.program.key();
+        let nft_mint = ctx.accounts.nft_mint.key();
+        let seeds = &[
+            NS_SBA_SCOPED_NFT_PROGRAM,
+            nft_mint.as_ref(),
+            program.as_ref(),
+            &[bump],
+        ];
+        let signer = &[&seeds[..]];
+        let signer_pubkey = Pubkey::create_program_address(seeds, &ID).unwrap();
+
+        let ix = Instruction {
+            program_id: ctx.accounts.token_program.key(),
+            data,
+            accounts: ctx
+                .remaining_accounts
+                .into_iter()
+                .map(|a| AccountMeta {
+                    pubkey: a.key(),
+                    is_signer: if signer_pubkey == a.key() {
+                        true
+                    } else {
+                        a.is_signer
+                    },
+                    is_writable: a.is_writable,
+                })
+                .collect(),
+        };
+        let accounts = ctx.remaining_accounts;
+        solana_program::program::invoke_signed(&ix, accounts, signer)?;
+        Ok(())
+    }
+
     //
     // CPIs to an opaque, unknown program with a scoped signer--as long as that
     // opaque program is not self-referential.
@@ -263,6 +306,38 @@ pub struct ExecuteTransactionScopedNftProgram<'info> {
     /// CHECK: free CPI; no state accessed as long as not re-entrant.
     #[account(constraint = program.key() != ID)]
     pub program: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ExecuteTransactionScopedNftProgramToken<'info> {
+    #[account(
+        seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
+        bump = sba_user.bump,
+    )]
+    pub sba_user: Account<'info, SoulBoundAuthorityUser>,
+    #[account(constraint = nft_token.owner == authority.key())]
+    pub nft_token: Account<'info, TokenAccount>,
+    #[account(constraint = nft_token.mint == nft_mint.key())]
+    pub nft_mint: Account<'info, Mint>,
+    #[account(constraint = sba_user.authority == authority.key())]
+    pub authority: Signer<'info>,
+    /// CHECK: seeds constraint.
+    #[account(
+        seeds = [
+            NS_SBA_SCOPED_NFT_PROGRAM,
+            nft_mint.key().as_ref(),
+            program.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub scoped_authority: UncheckedAccount<'info>,
+    // TODO: we should restrict this to the vesting program only so that
+    //       we can keep the semantics that PDAs are scoped to the
+    //       execution of a given program.
+    /// CHECK: free CPI; no state accessed as long as not re-entrant.
+    #[account(constraint = program.key() != ID)]
+    pub program: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 //
