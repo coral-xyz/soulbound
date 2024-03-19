@@ -5,6 +5,11 @@ use anchor_spl::token::{self, FreezeAccount, Mint, MintTo, Token, TokenAccount};
 
 declare_id!("7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS");
 
+mod vesting {
+    use super::*;
+    declare_id!("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m");
+}
+
 // Soul bound authority account namespace.
 pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 
@@ -102,8 +107,8 @@ pub mod soul_bound_authority {
     //
     // This is used so that, if the PDA used there owns token assets,
     // we can interact with them.
-    pub fn execute_tx_scoped_nft_program_token(
-        ctx: Context<ExecuteTransactionScopedNftProgramToken>,
+    pub fn execute_tx_scoped_nft_program_vesting_token(
+        ctx: Context<ExecuteTransactionScopedNftProgramVestingToken>,
         data: Vec<u8>,
     ) -> Result<()> {
         let bump = *ctx.bumps.get("scoped_authority").unwrap();
@@ -309,7 +314,7 @@ pub struct ExecuteTransactionScopedNftProgram<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ExecuteTransactionScopedNftProgramToken<'info> {
+pub struct ExecuteTransactionScopedNftProgramVestingToken<'info> {
     #[account(
         seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
         bump = sba_user.bump,
@@ -331,11 +336,8 @@ pub struct ExecuteTransactionScopedNftProgramToken<'info> {
         bump,
     )]
     pub scoped_authority: UncheckedAccount<'info>,
-    // TODO: we should restrict this to the vesting program only so that
-    //       we can keep the semantics that PDAs are scoped to the
-    //       execution of a given program.
-    /// CHECK: free CPI; no state accessed as long as not re-entrant.
-    #[account(constraint = program.key() != ID)]
+    /// CHECK: constraint checks it's the vesting program ID.
+    #[account(constraint = program.key() == vesting::ID)]
     pub program: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
 }
