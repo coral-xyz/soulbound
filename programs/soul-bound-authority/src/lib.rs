@@ -5,6 +5,11 @@ use anchor_spl::token::{self, FreezeAccount, Mint, MintTo, Token, TokenAccount};
 
 declare_id!("7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS");
 
+mod vesting {
+    use super::*;
+    declare_id!("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m");
+}
+
 // Soul bound authority account namespace.
 pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 
@@ -77,6 +82,49 @@ pub mod soul_bound_authority {
 
         let ix = Instruction {
             program_id: ctx.accounts.program.key(),
+            data,
+            accounts: ctx
+                .remaining_accounts
+                .into_iter()
+                .map(|a| AccountMeta {
+                    pubkey: a.key(),
+                    is_signer: if signer_pubkey == a.key() {
+                        true
+                    } else {
+                        a.is_signer
+                    },
+                    is_writable: a.is_writable,
+                })
+                .collect(),
+        };
+        let accounts = ctx.remaining_accounts;
+        solana_program::program::invoke_signed(&ix, accounts, signer)?;
+        Ok(())
+    }
+
+    // We allow the re-use of the `execute_tx_scoped_nft_program` authority
+    // to the token program only.
+    //
+    // This is used so that, if the PDA used there owns token assets,
+    // we can interact with them.
+    pub fn execute_tx_scoped_nft_program_vesting_token(
+        ctx: Context<ExecuteTransactionScopedNftProgramVestingToken>,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        let bump = *ctx.bumps.get("scoped_authority").unwrap();
+        let program = ctx.accounts.program.key();
+        let nft_mint = ctx.accounts.nft_mint.key();
+        let seeds = &[
+            NS_SBA_SCOPED_NFT_PROGRAM,
+            nft_mint.as_ref(),
+            program.as_ref(),
+            &[bump],
+        ];
+        let signer = &[&seeds[..]];
+        let signer_pubkey = Pubkey::create_program_address(seeds, &ID).unwrap();
+
+        let ix = Instruction {
+            program_id: ctx.accounts.token_program.key(),
             data,
             accounts: ctx
                 .remaining_accounts
@@ -263,6 +311,35 @@ pub struct ExecuteTransactionScopedNftProgram<'info> {
     /// CHECK: free CPI; no state accessed as long as not re-entrant.
     #[account(constraint = program.key() != ID)]
     pub program: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ExecuteTransactionScopedNftProgramVestingToken<'info> {
+    #[account(
+        seeds = [NS_SBA_SCOPED_USER, authority.key().as_ref()],
+        bump = sba_user.bump,
+    )]
+    pub sba_user: Account<'info, SoulBoundAuthorityUser>,
+    #[account(constraint = nft_token.owner == authority.key())]
+    pub nft_token: Account<'info, TokenAccount>,
+    #[account(constraint = nft_token.mint == nft_mint.key())]
+    pub nft_mint: Account<'info, Mint>,
+    #[account(constraint = sba_user.authority == authority.key())]
+    pub authority: Signer<'info>,
+    /// CHECK: seeds constraint.
+    #[account(
+        seeds = [
+            NS_SBA_SCOPED_NFT_PROGRAM,
+            nft_mint.key().as_ref(),
+            program.key().as_ref(),
+        ],
+        bump,
+    )]
+    pub scoped_authority: UncheckedAccount<'info>,
+    /// CHECK: constraint checks it's the vesting program ID.
+    #[account(constraint = program.key() == vesting::ID)]
+    pub program: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 //
