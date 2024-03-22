@@ -7,7 +7,7 @@ declare_id!("7DkjPwuKxvz6Viiawtbmb4CqnMKP6eGb1WqYas1airUS");
 
 mod vesting {
     use super::*;
-    declare_id!("strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m");
+    declare_id!("strmdbLr6w7QNmsiEXyFwWg3VSfg1GiELgU27P8aCGw");
 }
 
 // Soul bound authority account namespace.
