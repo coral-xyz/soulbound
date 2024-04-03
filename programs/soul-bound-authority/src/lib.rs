@@ -14,7 +14,7 @@ mod vesting {
 pub const NS_SBA_SCOPED_USER: &[u8] = b"sba-scoped-user";
 
 // Soul bound authority scoped to an nft and a program.
-pub const NS_SBA_SCOPED_NFT_PROGRAM: &[u8] = b"sba-scoped-nft-program";
+pub const NS_SBA_SCOPED_NFT_PROGRAM: &[u8] = b"sba-scoped-nft-program-prefix";
 
 // Soul bound authority scoped to a specific program namespace. These
 // authorities should always be the authorities controlling any assets
